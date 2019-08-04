@@ -1,25 +1,24 @@
 from z3 import *
 
-vars = [[Int('x %d %d' % (x, y)) for x in xrange(9)] for y in xrange(9)]
+from grid import Grid
+from display import draw_grid
+
+g = Grid(9, 9)
 
 s = Solver()
 
-# Numbers must be from 1 to 9
-for x in vars:
-    for y in x:
-        s.add(y >= 1)
-        s.add(y <= 9)
+for i in range(9):
+    s.add(Distinct([g.cell(i, j).var for j in range(9)]))
+    s.add(Distinct([g.cell(j, i).var for j in range(9)]))
 
-# Rows and columns must be distinct
-for i in xrange(9):
-    s.add(Distinct([vars[i][j] for j in xrange(9)]))
-    s.add(Distinct([vars[j][i] for j in xrange(9)]))
+for i in range(3):
+    for j in range(3):
+        s.add(Distinct([g.cell(3*i+di, 3*j+dj).var
+                        for di in range(3) for dj in range(3)]))
 
-# 3x3 squares must be distinct
-for xo in xrange(0, 9, 3):
-    for yo in xrange(0, 9, 3):
-        s.add(Distinct([vars[xo + i][yo + j]
-                        for i in xrange(3) for j in xrange(3)]))
+for cell in g.cells:
+    s.add(cell.var >= 1)
+    s.add(cell.var <= 9)
 
 l = [[5,3,0, 0,0,0, 0,0,0],
      [0,0,0, 0,0,5, 0,0,0],
@@ -34,29 +33,23 @@ l = [[5,3,0, 0,0,0, 0,0,0],
      [0,0,0, 0,0,0, 0,7,0],
     ]
 
-# Add constraints for the values we're given
-for i in xrange(9):
-    for j in xrange(9):
-        if l[i][j] != 0:
-            s.add(vars[i][j] == l[i][j])
+for y in range(9):
+    for x in range(9):
+        if l[y][x] != 0:
+            s.add(g.cell(x, y).var == l[y][x])
 
 s.check()
 m = s.model()
 
-# Pretty-print the result
-vals = [[str(m[v]) for v in x] for x in vars]
+def cell_draw(ctx):
+    ctx.fill(0.9, 0.9, 1, 1)
+    bold = l[ctx.gy][ctx.gx] != 0
+    ctx.text(ctx.val, fontsize=24, bold=bold)
 
-for i in xrange(9):
-    print (" ".join(vals[i][0:3]) + "|" +
-           " ".join(vals[i][3:6]) + "|" +
-           " ".join(vals[i][6:9]))
-    if i % 3 == 2 and i < 8:
-        print "+".join(["-" * 5] * 3)
+def horiz_edge_draw(ctx):
+    ctx.draw(width=5 if (ctx.gy % 3 == 0) else 1)
 
-# Just for fun, check that the solution is actually unique.
-for i in xrange(9):
-    for j in xrange(9):
-        s.push()
-        s.add(vars[i][j] != m[vars[i][j]])
-        assert s.check() == unsat
-        s.pop()
+def vert_edge_draw(ctx):
+    ctx.draw(width=5 if (ctx.gx % 3 == 0) else 1)
+
+draw_grid(g, m, 64, cell_draw, horiz_edge_draw, vert_edge_draw)
