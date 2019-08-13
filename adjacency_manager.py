@@ -40,7 +40,7 @@ def solve(s, grid, adjacency_fn):
         if len(am.classes()) == 1:
             return m
 
-        print "Found disconnected solution; attempting again..."
+        print("Found disconnected solution; attempting again...")
 
         for constraint in am.constraints(m):
             s.add(constraint)
@@ -73,11 +73,11 @@ def solve_grid(s, grid):
         am = AdjacencyManager()
         am.add_all(adjacencies)
         am.add_all([c.var, c.var] for c in grid.cells if m[c.var].as_long() == 1)
-        print am.classes()
+        print(am.classes())
         if len(am.classes()) == 1:
             return m
 
-        print "Found disconnected solution; attempting again..."
+        print("Found disconnected solution; attempting again...")
 
         for cls in am.classes():
             s.add(Or([v != m[v].as_long() for v in cls] +

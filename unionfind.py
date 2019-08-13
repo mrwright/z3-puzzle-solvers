@@ -1,4 +1,5 @@
 from collections import defaultdict
+import six
 
 class UFNode(object):
     def __init__(self, data):
@@ -34,7 +35,7 @@ class UnionFind(object):
 
     def classes(self):
         classes = defaultdict(list)
-        for obj, val in self.objs.iteritems():
+        for obj, val in six.iteritems(self.objs):
             classes[val.find()].append(obj)
 
         return classes.values()
