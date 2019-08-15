@@ -1,0 +1,34 @@
+- could we have a 'constraint' class, or maybe just helper functions / more declarative syntax, so that instead of
+
+for e in g.edges:
+    s.add(e.var >= 0)
+    s.add(e.var <= 1)
+
+we could say someting like
+
+for e in g.edges:
+    e.constrain_between(0, 1)
+
+or something.
+
+- It's tricky to tell what are objects coming in from Z3, e.g. Sum, Or?, And?
+  - and of course, == on a DSL object creates a DSL object and doesn't check equality, which is kind of confusing
+
+- For convenience, it might be nice to have a direct representation of givens in the datastructure, rather than having to convert them directly to constraints. This is also good if we want to be able to live-edit (and esp. in puzzles where the givens are the same type as whatever we're finding e.g. sudoku.) Givens could be rendered differently (bold, red, etc.) from things-found.
+
+- should be able to loop over grid cells, rows, cols, edges, points, etc, etc, with iterators rather than ranges
+
+- should have nice parsing of strings for givens, not have to use ' ' and ord and such
+
+- should have a doc describing strategies, it's easy to get confused -- everything should be uniquely represented, need to decide if the solver vars will be on edges, cells, points, and then just build constraints from those vars foreach of the other objects
+
+- how to ban a solution to get another one: (this only works if you're only using constants like bool, int, real, does not work with uninterpreted functions, sorts, arrays)
+
+s.check()  # must be "== sat"
+m = s.model
+s.add(Or([var() != m[var] for var in m]))
+
+var() is somehow needed to convert a declaration to a constant, don't ask me what that means, I got it from https://stackoverflow.com/questions/11867611/z3py-checking-all-solutions-for-equation
+
+^ actually this is also available as z3.z3util.get_models(), but it's more annoying to use (takes a constraint set, not a solver).
+

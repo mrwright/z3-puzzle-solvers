@@ -2,8 +2,8 @@ from z3 import *
 from invalidobj import Invalid
 
 class Cell(object):
-    def __init__(self, var, x, y):
-        self.var = var
+    def __init__(self, name, x, y):
+        self.name = name
         self.edge_above = Invalid()
         self.edge_below = Invalid()
         self.edge_left = Invalid()
@@ -26,11 +26,11 @@ class Cell(object):
                 if not isinstance(x, Invalid)]
 
     def __str__(self):
-        return "Cell({} @ {},{})".format(self.var, self.x, self.y)
+        return "Cell({})".format(self.name, self.x, self.y)
 
 class HorizEdge(object):
-    def __init__(self, var, x, y):
-        self.var = var
+    def __init__(self, name, x, y):
+        self.name = name
         self.x = x
         self.y = y
         self.edge_left = Invalid()
@@ -45,11 +45,11 @@ class HorizEdge(object):
                 if not isinstance(x, Invalid)]
 
     def __str__(self):
-        return "Horiz({})".format(self.var)
+        return "Horiz({})".format(self.name)
 
 class VertEdge(object):
-    def __init__(self, var, x, y):
-        self.var = var
+    def __init__(self, name, x, y):
+        self.name = name
         self.x = x
         self.y = y
         self.edge_above = Invalid()
@@ -64,11 +64,11 @@ class VertEdge(object):
                 if not isinstance(x, Invalid)]
 
     def __str__(self):
-        return "Vert({})".format(self.var)
+        return "Vert({})".format(self.name)
 
 class Point(object):
-    def __init__(self, var, x, y):
-        self.var = var
+    def __init__(self, name, x, y):
+        self.name = name
         self.x = x
         self.y = y
         self.edge_above = Invalid()
@@ -109,7 +109,11 @@ class Point(object):
         elif offs < 0:
             return self.point_above.vert_edge(offs+1)
 
+    def __str__(self):
+        return "Point({})".format(self.name)
+
 class Grid(object):
+    # NB: width and height are in cells
     def __init__(self, width, height, basename=''):
         self.width = width
         self.height = height
@@ -126,8 +130,8 @@ class Grid(object):
 
         for x in range(width):
             for y in range(height):
-                v = Int('{}cell_{},{}'.format(basename, x, y))
-                c = Cell(v, x, y)
+                name = '{}cell_{},{}'.format(basename, x, y)
+                c = Cell(name, x, y)
                 cells.append(c)
                 cell_array[x,y] = c
 
@@ -136,8 +140,8 @@ class Grid(object):
 
         for x in range(width+1):
             for y in range(height):
-                v = Int('{}vert_{},{}'.format(basename, x, y))
-                c = VertEdge(v, x, y)
+                name = '{}vert_{},{}'.format(basename, x, y)
+                c = VertEdge(name, x, y)
                 verts.append(c)
                 vert_array[x,y] = c
 
@@ -146,8 +150,8 @@ class Grid(object):
 
         for x in range(width):
             for y in range(height+1):
-                v = Int('{}horiz_{},{}'.format(basename, x, y))
-                c = HorizEdge(v, x, y)
+                name = '{}horiz_{},{}'.format(basename, x, y)
+                c = HorizEdge(name, x, y)
                 horizs.append(c)
                 horiz_array[x,y] = c
 
@@ -156,8 +160,8 @@ class Grid(object):
 
         for x in range(width+1):
             for y in range(height+1):
-                v = Int('{}point_{},{}'.format(basename, x, y))
-                c = Point(v, x, y)
+                name = '{}point_{},{}'.format(basename, x, y)
+                c = Point(name, x, y)
                 points.append(c)
                 point_array[x, y] = c
 
@@ -220,6 +224,67 @@ class Grid(object):
 
     def point(self, x, y):
         return self.point_array.get((x, y), Invalid())
+
+    def cell_rows(self):
+        return [self.cells[i:i+self.width] for i in range(0, self.width*self.height, self.width)]
+
+    def cell_cols(self):
+        return [[self.cell(x, y) for y in range(0, self.height)] for x in range(0, self.width)]
+
+    # Parameters are box SIZE not box COUNT!
+    def cell_boxes(self, box_height, box_width):
+        if ((box_height < 1 or box_height > self.height or self.height % box_height != 0) or
+            (box_width  < 1 or box_width  > self.width  or self.width  % box_width  != 0)):
+            raise Exception("Box size rows/cols must divide board height/width")
+
+        box_rows = self.height / box_height
+        box_cols = self.width / box_width
+
+        return [[
+            self.cell(box_x * box_width + inner_x, box_y * box_height + inner_y)
+                for inner_y in range(0, box_height) for inner_x in range(0, box_width)]
+                    for box_y in range(0, box_rows) for box_x in range(0, box_cols)]
+
+    def cells_locs(self):
+        return [(self.cell(x, y), x, y) for y in range(0, self.height) for x in range(0, self.width)]
+
+
+    def format_given_char(self, c):
+        if (c >= '0' and c <= '9'):
+            return ord(c) - ord('0')
+        if (c == ' '):
+            return None
+        return c
+
+    # reshape an array, string, array-of-arrays, or array-of-strings, into what we want.
+    def format_givens(self, givens):
+        if type(givens) == str:
+            if len(givens) == self.width * self.height:
+                givens = [self.format_given_char(c) for c in givens]
+                return [givens[i : i+self.width] for i in range(0, len(givens), self.width)]
+            else:
+                raise Exception("Givens bad shape")
+        elif type(givens) == list:
+            if len(givens) == self.width * self.height:
+                return [givens[i : i+self.width] for i in range(0, len(givens), self.width)]
+            elif len(givens) == self.height:
+                if not all(len(row) == self.width for row in givens):
+                    raise Exception("Givens bad shape")
+
+                if all(type(row) == str for row in givens):
+                    return [[self.format_given_char(c) for c in row] for row in givens]
+                elif all(type(row) == list for row in givens):
+                    return givens
+                else:
+                    raise Exception("Givens mixed types")
+        else:
+            raise Exception("Givens unknown type")
+
+    def init_cells(self, givens, initfn):
+        givens = self.format_givens(givens)
+        for (cell, x, y) in self.cells_locs():
+            cell.given = givens[y][x]
+            cell.var = initfn(cell)
 
     @property
     def edges(self):
