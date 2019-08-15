@@ -32,3 +32,4 @@ var() is somehow needed to convert a declaration to a constant, don't ask me wha
 
 ^ actually this is also available as z3.z3util.get_models(), but it's more annoying to use (takes a constraint set, not a solver).
 
+- drawing: make it easier to do things like tiny corner numbers (like crosswords), inset borders, different colors, different line styles/widths, arrows between cells or within cells, hide the border between specific (e.g. adjacent) cells, somewhere to put debug info, label cells with coordinates or other aux info

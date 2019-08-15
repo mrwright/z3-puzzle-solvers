@@ -226,10 +226,10 @@ class Grid(object):
         return self.point_array.get((x, y), Invalid())
 
     def cell_rows(self):
-        return [self.cells[i:i+self.width] for i in range(0, self.width*self.height, self.width)]
+        return [[self.cell_array[x, y] for x in range(0, self.height)] for y in range(0, self.width)]
 
     def cell_cols(self):
-        return [[self.cell(x, y) for y in range(0, self.height)] for x in range(0, self.width)]
+        return [[self.cell_array[x, y] for y in range(0, self.height)] for x in range(0, self.width)]
 
     # Parameters are box SIZE not box COUNT!
     def cell_boxes(self, box_height, box_width):
