@@ -54,14 +54,12 @@ print s.check()  # should be z3.unsat
 
 def cell_draw(ctx):
     ctx.fill(0.9, 0.9, 1, 1)
-    ctx.text(ctx.val, fontsize=24)
 
     given = ctx.cell.given
     if (given):
-        #ctx.fill(1, 0, 0, 1)
-        ctx.text(str(given), fontsize=12)
+        ctx.fill(1, 0, 0, 1)
 
-    ctx.text(ctx.cell.name, fontsize=8)
+    ctx.text(ctx.val, fontsize=24)
 
 def edge_draw(ctx):
     ctx.draw(width=2)
@@ -69,7 +67,7 @@ def edge_draw(ctx):
 def point_draw(ctx):
     pass
 
-display.draw_grid(g, m, 64, cell_draw, edge_draw, point_draw)
+display.draw_grid(g, m, 64, cell_draw, edge_draw, edge_draw, point_draw)
 
 
 # check for uniqueness
