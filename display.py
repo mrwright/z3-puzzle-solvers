@@ -183,10 +183,11 @@ class CellContext(object):
         self.ctx.rectangle(self.x0, self.y0, self.scale, self.scale)
         self.ctx.fill()
 
-    def text(self, text, fontsize=12, family='', bold=False, italic=False):
+    def text(self, text, fontsize=12, family='', bold=False, italic=False, color=(0, 0, 0, 1)):
         self.ctx.set_font_size(fontsize)
         self.ctx.set_font_face(font(family, bold, italic))
-        self.ctx.set_source_rgba(0, 0, 0, 1)
+        r, g, b, a = color
+        self.ctx.set_source_rgba(b, g, r, a)
         draw_text(self.ctx, self.mx, self.my, text)
         self.ctx.stroke()
 
