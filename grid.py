@@ -110,7 +110,7 @@ class Point(object):
             return self.point_above.vert_edge(offs+1)
 
 class Grid(object):
-    def __init__(self, width, height, basename=''):
+    def __init__(self, width, height, basename='', cellgen=Int, pointgen=Int, edgegen=Int):
         self.width = width
         self.height = height
 
@@ -126,7 +126,7 @@ class Grid(object):
 
         for x in range(width):
             for y in range(height):
-                v = Int('{}cell_{},{}'.format(basename, x, y))
+                v = cellgen('{}cell_{},{}'.format(basename, x, y))
                 c = Cell(v, x, y)
                 cells.append(c)
                 cell_array[x,y] = c
@@ -136,7 +136,7 @@ class Grid(object):
 
         for x in range(width+1):
             for y in range(height):
-                v = Int('{}vert_{},{}'.format(basename, x, y))
+                v = edgegen('{}vert_{},{}'.format(basename, x, y))
                 c = VertEdge(v, x, y)
                 verts.append(c)
                 vert_array[x,y] = c
@@ -146,7 +146,7 @@ class Grid(object):
 
         for x in range(width):
             for y in range(height+1):
-                v = Int('{}horiz_{},{}'.format(basename, x, y))
+                v = edgegen('{}horiz_{},{}'.format(basename, x, y))
                 c = HorizEdge(v, x, y)
                 horizs.append(c)
                 horiz_array[x,y] = c
@@ -156,7 +156,7 @@ class Grid(object):
 
         for x in range(width+1):
             for y in range(height+1):
-                v = Int('{}point_{},{}'.format(basename, x, y))
+                v = pointgen('{}point_{},{}'.format(basename, x, y))
                 c = Point(v, x, y)
                 points.append(c)
                 point_array[x, y] = c
