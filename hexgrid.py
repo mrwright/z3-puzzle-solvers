@@ -1,89 +1,91 @@
 from z3 import *
 from invalidobj import Invalid
 
-# This module represents a hex grid that has columns of hexes. If your puzzle has rows of hexes, turn it sideways.
+# This module represents a hex grid that has rows of hexes. If your puzzle has columns of hexes, turn it sideways.
 
 # How coordinates work:
-# Everything is identified by three coordinates: E, NW, and SW. A value of 1 in a coordinate is enough to move from
+# Everything is identified by three coordinates: N, SE, and SW. A value of 1 in a coordinate is enough to move from
 # the center of a cell to a corner, or along an edge.
 #
-# By convention, cells have coordinates that sum to 0. So the cell with coordinates 3, -2, -1 is actually
-# three columns to the east and half a hex south of the cell at 0, 0, 0, because you move 3 half-hexes east,
-# two southeast, and one northeast. The nice thing about this convention is that you can subtract coordinates to make
+# By convention, cells have coordinates that sum to 0. So the cell with coordinates 3N, -2SE, -1SW is actually
+# three rows to the north and half a hex west of the cell at 0, 0, 0, because you move 3 half-hexes north,
+# two northwest, and one northeast. The nice thing about this convention is that you can subtract coordinates to make
 # vectors (also with 0 coordinate sum if they represent movement by a whole number of hexes), and the length of a vector
 # is always the largest absolute value of the components. If you ever have a set of coordinates that you think should
 # represent a cell, but they don't sum to 0, subtract 1/3 of the sum from each coordinate so that they do. (If the sum
 # isn't divisible by 3, it doesn't represent a cell, but a point of one kind or the other.)
 #
-# Westward points (those with edges to the west, ne, and se) have coordinates that sum to 1.
-# Eastward points (those with edges to the east, nw, and sw) have coordinates that sum to -1.
+# Northward points (those with edges to the north, se, and sw) have coordinates that sum to 1.
+# Southward points (those with edges to the south, nw, and ne) have coordinates that sum to -1.
 # The code upholds all of these conventions internally, but the part-accessors in HexGrid fix coordinates if clients
 # lost track.
 #
-# All edges are identified by their eastward point (this is just a convention I decided on): so horizontal edges are
-# identified by their western point, ne-sw (like /) edges by their ne point, and nw-se (like \) edges by their se point.
+# All edges are identified by their northward point (this is just a convention I decided on): so vertical edges are
+# identified by their southern point, ne-sw (like /) edges by their ne point, and nw-se (like \) edges by their nw
+# point. The edge accessors in HexGrid also correct you if you accidentally ask for an edge by its southward point
+# instead.
 
 class Cell:
-    def __init__(self, var, e, nw, sw):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.edge_n = Invalid()
-        self.edge_s = Invalid()
+        self.n = n
+        self.se = se
+        self.sw = sw
+        self.edge_w = Invalid()
+        self.edge_e = Invalid()
         self.edge_nw = Invalid()
         self.edge_ne = Invalid()
         self.edge_sw = Invalid()
         self.edge_se = Invalid()
-        self.cell_n = Invalid()
-        self.cell_s = Invalid()
+        self.cell_w = Invalid()
+        self.cell_e = Invalid()
         self.cell_nw = Invalid()
         self.cell_ne = Invalid()
         self.cell_sw = Invalid()
         self.cell_se = Invalid()
-        self.e = e
-        self.nw = nw
-        self.sw = sw
 
-def edges(self):
-    return [x for x in [self.edge_n, self.edge_ne,
-                        self.edge_se, self.edge_s,
-                        self.edge_sw, self.edge_nw]
-            if not isinstance(x, Invalid)]
+    def edges(self):
+        return [x for x in [self.edge_ne, self.edge_e,
+                            self.edge_se, self.edge_sw,
+                            self.edge_w, self.edge_nw]
+                if not isinstance(x, Invalid)]
 
-def neighbors(self):
-    return [x for x in [self.cell_n, self.cell_ne,
-                        self.cell_se, self.cell_s,
-                        self.cell_sw, self.cell_nw]
-            if not isinstance(x, Invalid)]
+    def neighbors(self):
+        return [x for x in [self.cell_ne, self.cell_e,
+                            self.cell_se, self.cell_sw,
+                            self.cell_w, self.cell_nw]
+                if not isinstance(x, Invalid)]
 
-def __str__(self):
-    return "Cell({} @ {},{},{})".format(self.var, self.e, self.nw, self.sw)
+    def __str__(self):
+        return "Cell({} @ {},{},{})".format(self.var, self.n, self.se, self.sw)
 
-class HorizEdge(object):
-    def __init__(self, var, e, nw, sw):
+class VertEdge(object):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.e = e
-        self.nw = nw
+        self.n = n
+        self.se = se
         self.sw = sw
         self.edge_nw = Invalid()
         self.edge_sw = Invalid()
         self.edge_ne = Invalid()
         self.edge_se = Invalid()
-        self.cell_s = Invalid()
-        self.cell_n = Invalid()
-        self.point_w = Invalid()
-        self.point_e = Invalid()
+        self.cell_w = Invalid()
+        self.cell_e = Invalid()
+        self.point_n = Invalid()
+        self.point_s = Invalid()
 
     def cells(self):
-        return [x for x in [self.cell_s, self.cell_n]
+        return [x for x in [self.cell_w, self.cell_e]
                 if not isinstance(x, Invalid)]
 
     def __str__(self):
-        return "Horiz({})".format(self.var)
+        return "Vert({})".format(self.var)
 
 class NW_SE_Edge(object):
-    def __init__(self, var, e, nw, sw):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.e = e
-        self.nw = nw
+        self.n = n
+        self.se = se
         self.sw = sw
         self.edge_ne = Invalid()
         self.edge_w = Invalid()
@@ -101,14 +103,14 @@ class NW_SE_Edge(object):
         return "NW_SE({})".format(self.var)
 
 class NE_SW_Edge(object):
-    def __init__(self, var, e, nw, sw):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.e = e
-        self.nw = nw
+        self.n = n
+        self.se = se
         self.sw = sw
         self.edge_nw = Invalid()
-        self.edge_e = Invalid()
-        self.edge_w = Invalid()
+        self.edge_n = Invalid()
+        self.edge_s = Invalid()
         self.edge_se = Invalid()
         self.cell_nw = Invalid()
         self.cell_se = Invalid()
@@ -121,318 +123,330 @@ class NE_SW_Edge(object):
     def __str__(self):
         return "NE_SW({})".format(self.var)
 
-class EastwardPoint(object):
-    def __init__(self, var, e, nw, sw):
+class NorthwardPoint(object):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.e = e
-        self.nw = nw
+        self.n = n
+        self.se = se
         self.sw = sw
-        self.edge_e = Invalid()
-        self.edge_nw = Invalid()
+        self.edge_n = Invalid()
+        self.edge_se = Invalid()
         self.edge_sw = Invalid()
-        self.point_e = Invalid()
-        self.point_nw = Invalid()
+        self.point_n = Invalid()
+        self.point_se = Invalid()
         self.point_sw = Invalid()
-        self.cell_w = Invalid()
+        self.cell_s = Invalid()
         self.cell_ne = Invalid()
-        self.cell_se = Invalid()
+        self.cell_nw = Invalid()
 
     def edges(self):
-        return [x for x in [self.edge_e,
-                            self.edge_nw,
+        return [x for x in [self.edge_n,
+                            self.edge_se,
                             self.edge_sw]
                 if not isinstance(x, Invalid)]
 
-class WestwardPoint(object):
-    def __init__(self, var, e, nw, sw):
+class SouthwardPoint(object):
+    def __init__(self, var, n, se, sw):
         self.var = var
-        self.e = e
-        self.nw = nw
+        self.n = n
+        self.se = se
         self.sw = sw
-        self.edge_w = Invalid()
+        self.edge_s = Invalid()
         self.edge_ne = Invalid()
-        self.edge_se = Invalid()
-        self.point_w = Invalid()
+        self.edge_nw = Invalid()
+        self.point_s = Invalid()
         self.point_ne = Invalid()
-        self.point_se = Invalid()
-        self.cell_e = Invalid()
-        self.cell_nw = Invalid()
+        self.point_nw = Invalid()
+        self.cell_n = Invalid()
+        self.cell_se = Invalid()
         self.cell_sw = Invalid()
 
     def edges(self):
-        return [x for x in [self.edge_w,
+        return [x for x in [self.edge_s,
                             self.edge_ne,
-                            self.edge_se]
+                            self.edge_nw]
                 if not isinstance(x, Invalid)]
 
-# This function figures out how tall column x should be, and the coordinates of the northernmost hex in that column
-def calc_bounds(height, north_column, south_column, x):
-    e = x
-    if x < north_column:
-        nw = 0
-        sw = -x
+# This function figures out how wide row y should be, and the coordinates of the westernmost hex in that column.
+# I figured it out by drawing a lot of pictures. The northwest corner (the first hex of row 0) is hex 0,0,0 in the
+# coordinate system, because that's where we start generating cells.
+def calc_bounds(width, west_row, east_row, y):
+    n = -y
+    if y < west_row:
+        se = 0
+        sw = y
     else:
-        nw = north_column - x
-        sw = -north_column
+        se = y - west_row
+        sw = west_row
 
-    column_height = height + x - min(north_column, south_column)
-    if x > north_column:
-        column_height = column_height - (x - north_column)
-    if x > south_column:
-        column_height = column_height - (x - south_column)
+    row_width = width + y - min(west_row, east_row)
+    if y > west_row:
+        row_width = row_width - (y - west_row)
+    if y > east_row:
+        row_width = row_width - (y - east_row)
 
-    return column_height, e, nw, sw
+    return row_width, n, se, sw
 
-# This function returns the given coords regularized to be close to the e + nw + sw = 0 plane
-def regularize_coords(e, nw, sw):
-    sum = e + nw + sw
+# This function returns the given coords regularized so that -1 <= n + se + sw <= 1
+def regularize_coords(n, se, sw):
+    sum = n + se + sw
     adj = (sum + 1) // 3
-    return e-adj, nw-adj, sw-adj
+    return n - adj, se - adj, sw - adj
 
-# This class describes an oblong (possibly degenerate) hexagon. width is the total number of columns in the grid.
-# height is the height of the column containing the north corner, which is the same as the maximum height of a column.
-# north_column is the (0-based) index of that column. south_column is the (0-based) index of the column containing
-# the south corner. These values are not independent: so that the westernmost and easternmost columns have a positive
-# length, we require that north_column < height and south_column + height >= width (for left-leaning boards), or vice
+# This class describes an oblong (possibly degenerate) hexagon. height is the total number of rows in the grid.
+# width is the width of the row containing the west corner, which is the same as the maximum width of a row.
+# west_row is the (0-based) index of that row. east_row is the (0-based) index of the row containing
+# the east corner. These values are not independent: so that the northernmost and southernmost rows have a positive
+# length, we require that west_row < width and east_row + width >= height (for left-leaning boards), or vice
 # versa (for right-leaning boards).
 # The northwest corner is hex 0,0,0 in the coordinate system, because that's where we start generating cells.
 class HexGrid(object):
-    def __init__(self, width, height, north_column, south_column, basename='', cellgen=Int, pointgen=Int, edgegen=Int):
-        self.width = width
+    def __init__(self, height, width, west_row, east_row, basename='', cellgen=Int, pointgen=Int, edgegen=Int):
         self.height = height
-        self.north_column = north_column
-        self.south_column = south_column
+        self.width = width
+        self.west_row = west_row
+        self.east_row = east_row
 
         cell_array = {}
-        horiz_array = {}
+        vert_array = {}
         ne_sw_array = {}
         nw_se_array = {}
-        eastward_point_array = {}
-        westward_point_array = {}
+        northward_point_array = {}
+        southward_point_array = {}
 
         cells = []
-        horizs = []
+        verts = []
         ne_sws = []
         nw_ses = []
-        eastward_points = []
-        westward_points = []
+        northward_points = []
+        southward_points = []
 
         # make cells
-        for x in range(width):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
+        for y in range(height):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
 
-            for y in range(column_height):
+            for _ in range(row_width):
                 # make cell
-                cv = cellgen('{}cell_{},{},{}'.format(basename, e, nw, sw))
-                c = Cell(cv, e, nw, sw)
+                cv = cellgen('{}cell_{},{},{}'.format(basename, n, se, sw))
+                c = Cell(cv, n, se, sw)
                 cells.append(c)
-                cell_array[e, nw, sw] = c
-
-                nw = nw - 1
-                sw = sw + 1
+                cell_array[n, se, sw] = c
+                se = se + 1
+                sw = sw - 1
 
         self.cell_array = cell_array
         self.cells = cells
 
-        # make eastward points
-        # one more for eastern edge of board
-        for x in range(width+1):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
-            # one more for the sw corner of the column
-            column_height = column_height + 1
+        # make southward points to nw of each hex
+        # one more row for south edge of board
+        for y in range(height + 1):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
+            # one more for the ne corner of the row
+            row_width = row_width + 1
             # start to nw of first hex
-            nw = nw + 1
-            for y in range(column_height):
+            se = se - 1
+            for _ in range(row_width):
                 # make point to nw
-                nw_pv = pointgen('{}point_{},{},{}'.format(basename, e, nw, sw))
-                nw_p = EastwardPoint(nw_pv, e, nw, sw)
-                eastward_points.append(nw_p)
-                eastward_point_array[e, nw, sw] = nw_p
-
-                nw = nw - 1
-                sw = sw + 1
-
-        self.eastward_points = eastward_points
-        self.eastward_point_array = eastward_point_array
-
-        # make westward points
-        # one more for eastern edge of board
-        for x in range(width+1):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
-            if x > north_column:
-                # one more at the north end for the ne corner of the column
-                column_height = column_height + 1
-                nw = nw + 1
+                nw_pv = pointgen('{}point_{},{},{}'.format(basename, n, se, sw))
+                nw_p = SouthwardPoint(nw_pv, n, se, sw)
+                southward_points.append(nw_p)
+                southward_point_array[n, se, sw] = nw_p
+                se = se + 1
                 sw = sw - 1
-            if x > south_column:
-                # one more at the south end for the se corner of the column
-                column_height = column_height + 1
-            # start to w of first hex
-            e = e - 1
-            for y in range(column_height):
-                # make point to w
-                w_pv = pointgen('{}point_{},{},{}'.format(basename, e, nw, sw))
-                w_p = WestwardPoint(w_pv, e, nw, sw)
-                westward_points.append(w_p)
-                westward_point_array[e, nw, sw] = w_p
-                nw = nw - 1
+
+        self.southward_points = southward_points
+        self.southward_point_array = southward_point_array
+
+        # make northward points to n of each hex
+        # one more row for south edge of board
+        for y in range(height + 1):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
+            if y > west_row:
+                # one more at the west end for the sw corner of the row
+                row_width = row_width + 1
+                se = se - 1
                 sw = sw + 1
-
-        self.westward_points = westward_points
-        self.westward_point_array = westward_point_array
-
-        # make horiz edges
-        for x in range(width):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
-            # one more for south edge of board
-            column_height = column_height + 1
+            if y > east_row:
+                # one more at the east end for the se corner of the row
+                row_width = row_width + 1
             # start to n of first hex
-            nw = nw + 1
-            for y in range(column_height):
-                # make edge to n
-                n_ev = edgegen('{}horiz_{},{},{}'.format(basename, e, nw, sw))
-                n_e = HorizEdge(n_ev, e, nw, sw)
-                horizs.append(n_e)
-                horiz_array[e, nw, sw] = n_e
-                nw = nw - 1
-                sw = sw + 1
+            n = n + 1
+            for _ in range(row_width):
+                # make point to w
+                n_pv = pointgen('{}point_{},{},{}'.format(basename, n, se, sw))
+                n_p = NorthwardPoint(n_pv, n, se, sw)
+                northward_points.append(n_p)
+                northward_point_array[n, se, sw] = n_p
+                se = se + 1
+                sw = sw - 1
 
-        self.horiz_array = horiz_array
-        self.horizs = horizs
+        self.northward_points = northward_points
+        self.northward_point_array = northward_point_array
 
-        # make ne_sw edges
-        # one more for east edge of board
-        for x in range(width + 1):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
-            if x > south_column:
+        # make vert edges w of each hex
+        for y in range(height):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
+            # one more for east edge of board
+            row_width = row_width + 1
+            # start to w of first hex
+            sw = sw + 1
+            for _ in range(row_width):
+                # make edge to w
+                w_ev = edgegen('{}vert_{},{},{}'.format(basename, n, se, sw))
+                w_e = VertEdge(w_ev, n, se, sw)
+                verts.append(w_e)
+                vert_array[n, se, sw] = w_e
+                se = se + 1
+                sw = sw - 1
+
+        self.vert_array = vert_array
+        self.verts = verts
+
+        # make ne_sw edges nw of each hex
+        # one more row for south edge of board
+        for y in range(height + 1):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
+            if y > east_row:
                 # one more for se edge of board
-                column_height = column_height + 1
+                row_width = row_width + 1
             # start to nw of first hex
-            nw = nw + 1
-            for y in range(column_height):
+            n = n + 1
+            for _ in range(row_width):
                 # make edge to nw
-                nw_ev = edgegen('{}ne_sw_{},{},{}'.format(basename, e, nw, sw))
-                nw_e = NE_SW_Edge(nw_ev, e, nw, sw)
+                nw_ev = edgegen('{}ne_sw_{},{},{}'.format(basename, n, se, sw))
+                nw_e = NE_SW_Edge(nw_ev, n, se, sw)
                 ne_sws.append(nw_e)
-                ne_sw_array[e, nw, sw] = nw_e
-                nw = nw - 1
-                sw = sw + 1
+                ne_sw_array[n, se, sw] = nw_e
+                se = se + 1
+                sw = sw - 1
 
         self.ne_sw_array = ne_sw_array
         self.ne_sws = ne_sws
 
-        # make nw_se edges
-        # one more for east edge of board
-        for x in range(width + 1):
-            column_height, e, nw, sw = calc_bounds(height, north_column, south_column, x)
-            if x > north_column:
-                # one more at north end for ne edge of board
-                column_height = column_height + 1
-                nw = nw + 1
-                sw = sw - 1
-            # start to sw of first hex
-            sw = sw + 1
-            for y in range(column_height + 1):
-                #make edge to sw
-                sw_ev = edgegen('{}nw_se_{},{},{}'.format(basename, e, nw, sw))
-                sw_e = NW_SE_Edge(sw_ev, e, nw, sw)
-                nw_ses.append(sw_e)
-                nw_se_array[e, nw, sw] = sw_e
-                nw = nw - 1
+        # make nw_se edges ne of each hex
+        # one more row for south edge of board
+        for y in range(height + 1):
+            row_width, n, se, sw = calc_bounds(width, west_row, east_row, y)
+            if y > west_row:
+                # one more at west end for sw edge of board
+                row_width = row_width + 1
+                se = se - 1
                 sw = sw + 1
+            # start to ne of first hex
+            n = n + 1
+            for _ in range(row_width + 1):
+                # make edge to ne
+                ne_ev = edgegen('{}nw_se_{},{},{}'.format(basename, n, se, sw))
+                ne_e = NW_SE_Edge(ne_ev, n, se, sw)
+                nw_ses.append(ne_e)
+                nw_se_array[n, se, sw] = ne_e
+                se = se + 1
+                sw = sw - 1
 
         self.nw_se_array = nw_se_array
         self.nw_ses = nw_ses
 
         # link things up
         for c in self.cells:
-            e, nw, sw = c.e, c.nw, c.sw
-            c.cell_n = self.cell(e, nw+1, sw-1)
-            c.cell_s = self.cell(e, nw-1, sw+1)
-            c.cell_nw = self.cell(e-1, nw+1, sw)
-            c.cell_ne = self.cell(e+1, nw, sw-1)
-            c.cell_sw = self.cell(e-1, nw, sw+1)
-            c.cell_se = self.cell(e+1, nw-1, sw)
+            n, se, sw = c.n, c.se, c.sw
+            c.cell_e = self.cell(n, se + 1, sw - 1)
+            c.cell_w = self.cell(n, se - 1, sw + 1)
+            c.cell_se = self.cell(n-1, se+1, sw)
+            c.cell_ne = self.cell(n+1, se, sw-1)
+            c.cell_sw = self.cell(n-1, se, sw+1)
+            c.cell_nw = self.cell(n+1, se-1, sw)
 
-            c.edge_n = self.horiz(e, nw+1, sw)
-            c.edge_n.cell_s = c
-            c.edge_s = self.horiz(e, nw, sw+1)
-            c.edge_s.cell_n = c
-            c.edge_nw = self.ne_sw(e, nw+1, sw)
+            c.edge_w = self.vert(n, se, sw+1)
+            c.edge_w.cell_e = c
+            c.edge_e = self.vert(n, se+1, sw)
+            c.edge_e.cell_w = c
+            c.edge_nw = self.ne_sw(n+1, se, sw)
             c.edge_nw.cell_se = c
-            c.edge_se = self.ne_sw(e+1, nw, sw)
+            c.edge_se = self.ne_sw(n, se+1, sw)
             c.edge_se.cell_nw = c
-            c.edge_ne = self.nw_se(e, nw+1, sw)
+            c.edge_ne = self.nw_se(n+1, se, sw)
             c.edge_ne.cell_sw = c
-            c.edge_sw = self.nw_se(e, nw, sw+1)
+            c.edge_sw = self.nw_se(n, se, sw+1)
             c.edge_sw.cell_ne = c
 
-            self.eastward_point(e+1, nw, sw).cell_w = c
-            self.westward_point(e-1, nw, sw).cell_e = c
-            self.eastward_point(e, nw+1, sw).cell_se = c
-            self.westward_point(e, nw-1, sw).sell_nw = c
-            self.eastward_point(e, nw, sw+1).cell_ne = c
-            self.westward_point(e, nw, sw-1).cell_sw = c
+            self.northward_point(n + 1, se, sw).cell_s = c
+            self.southward_point(n - 1, se, sw).cell_n = c
+            self.northward_point(n, se + 1, sw).cell_nw = c
+            self.southward_point(n, se - 1, sw).sell_nw = c
+            self.northward_point(n, se, sw + 1).cell_ne = c
+            self.southward_point(n, se, sw - 1).cell_sw = c
 
-        for p in eastward_points:
-            e, nw, sw = p.e, p.nw, p.sw
-            p.edge_e = self.horiz(e, nw, sw)
-            p.edge_nw = self.nw_se(e, nw, sw)
-            p.edge_sw = self.ne_sw(e, nw, sw)
-            if not isinstance(p.edge_e, Invalid):
-                p.edge_e.point_w = p
-                p.edge_e.edge_nw = p.edge_nw
-                p.edge_e.edge_sw = p.edge_sw
-            if not isinstance(p.edge_nw, Invalid):
-                p.edge_nw.point_se = p
-                p.edge_nw.edge_e = p.edge_e
-                p.edge_nw.edge_sw = p.edge_sw
-            if not isinstance(p.edge_sw, Invalid):
-                p.edge_sw.point_ne = p
-                p.edge_sw.edge_e = p.edge_e
-                p.edge_sw.edge_nw = p.edge_nw
-
-        for p in westward_points:
-            e, nw, sw = p.e, p.nw, p.sw
-            p.edge_w = self.horiz(e, nw+1, sw+1)
-            p.edge_ne = self.ne_sw(e+1, nw+1, sw)
-            p.edge_se = self.nw_se(e+1, nw, sw+1)
-            if not isinstance(p.edge_w, Invalid):
-                p.edge_w.point_e = p
-                p.edge_w.edge_ne = p.edge_ne
-                p.edge_w.edge_se = p.edge_se
-            if not isinstance(p.edge_ne, Invalid):
-                p.edge_ne.point_sw = p
-                p.edge_ne.edge_w = p.edge_w
-                p.edge_ne.edge_se = p.edge_se
+        for p in northward_points:
+            n, se, sw = p.n, p.se, p.sw
+            p.edge_n = self.vert(n, se, sw)
+            p.edge_se = self.nw_se(n, se, sw)
+            p.edge_sw = self.ne_sw(n, se, sw)
+            if not isinstance(p.edge_n, Invalid):
+                p.edge_n.point_s = p
+                p.edge_n.edge_se = p.edge_se
+                p.edge_n.edge_sw = p.edge_sw
             if not isinstance(p.edge_se, Invalid):
                 p.edge_se.point_nw = p
-                p.edge_se.edge_w = p.edge_w
-                p.edge_se.edge_ne = p.edge_ne
+                p.edge_se.edge_n = p.edge_n
+                p.edge_se.edge_sw = p.edge_sw
+            if not isinstance(p.edge_sw, Invalid):
+                p.edge_sw.point_ne = p
+                p.edge_sw.edge_n = p.edge_n
+                p.edge_sw.edge_se = p.edge_se
 
-    def cell(self, e, nw, sw):
-        return self.cell_array.get(regularize_coords(e, nw, sw), Invalid())
+        for p in southward_points:
+            n, se, sw = p.n, p.se, p.sw
+            p.edge_s = self.vert(n, se+1, sw+1)
+            p.edge_ne = self.ne_sw(n+1, se+1, sw)
+            p.edge_nw = self.nw_se(n+1, se, sw+1)
+            if not isinstance(p.edge_s, Invalid):
+                p.edge_s.point_n = p
+                p.edge_s.edge_ne = p.edge_ne
+                p.edge_s.edge_nw = p.edge_nw
+            if not isinstance(p.edge_ne, Invalid):
+                p.edge_ne.point_sw = p
+                p.edge_ne.edge_s = p.edge_s
+                p.edge_ne.edge_nw = p.edge_nw
+            if not isinstance(p.edge_nw, Invalid):
+                p.edge_nw.point_se = p
+                p.edge_nw.edge_s = p.edge_s
+                p.edge_nw.edge_ne = p.edge_ne
 
-    def horiz(self, e, nw, sw):
-        return self.horiz_array.get(regularize_coords(e, nw, sw), Invalid())
+    def cell(self, n, se, sw):
+        return self.cell_array.get(regularize_coords(n, se, sw), Invalid())
 
-    def nw_se(self, e, nw, sw):
-        return self.nw_se_array.get(regularize_coords(e, nw, sw), Invalid())
+    def vert(self, n, se, sw):
+        n, se, sw = regularize_coords(n, se, sw)
+        if n + se + sw == -1:
+            se = se + 1
+            sw = sw + 1
+        return self.vert_array.get((n, se, sw), Invalid())
 
-    def ne_sw(self, e, nw, sw):
-        return self.ne_sw_array.get(regularize_coords(e, nw, sw), Invalid())
+    def nw_se(self, n, se, sw):
+        n, se, sw = regularize_coords(n, se, sw)
+        if n + se + sw == -1:
+            n = n + 1
+            sw = sw + 1
+        return self.nw_se_array.get((n, se, sw), Invalid())
 
-    def westward_point(self, e, nw, sw):
-        return self.westward_point_array.get(regularize_coords(e, nw, sw), Invalid())
+    def ne_sw(self, n, se, sw):
+        n, se, sw = regularize_coords(n, se, sw)
+        if n + se + sw == -1:
+            n = n + 1
+            se = se + 1
+        return self.ne_sw_array.get((n, se, sw), Invalid())
 
-    def eastward_point(self, e, nw, sw):
-        return self.eastward_point_array.get(regularize_coords(e, nw, sw), Invalid())
+    def southward_point(self, n, se, sw):
+        return self.southward_point_array.get(regularize_coords(n, se, sw), Invalid())
+
+    def northward_point(self, n, se, sw):
+        return self.northward_point_array.get(regularize_coords(n, se, sw), Invalid())
 
     @property
     def edges(self):
-        return self.horizs + self.ne_sws + self.nw_ses
+        return self.verts + self.ne_sws + self.nw_ses
 
     @property
     def points(self):
-        return self.eastward_points + self.westward_points
+        return self.southward_points + self.northward_points
 
