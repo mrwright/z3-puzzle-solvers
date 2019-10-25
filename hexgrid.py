@@ -59,6 +59,10 @@ class Cell:
     def __str__(self):
         return "Cell({} @ {},{},{})".format(self.var, self.n, self.se, self.sw)
 
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
+
 class VertEdge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -81,6 +85,10 @@ class VertEdge(object):
     def __str__(self):
         return "Vert({})".format(self.var)
 
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
+
 class NW_SE_Edge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -101,6 +109,10 @@ class NW_SE_Edge(object):
                 if not isinstance(x, Invalid)]
     def __str__(self):
         return "NW_SE({})".format(self.var)
+
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
 
 class NE_SW_Edge(object):
     def __init__(self, var, n, se, sw):
@@ -123,6 +135,10 @@ class NE_SW_Edge(object):
     def __str__(self):
         return "NE_SW({})".format(self.var)
 
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
+
 class NorthwardPoint(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -144,6 +160,12 @@ class NorthwardPoint(object):
                             self.edge_se,
                             self.edge_sw]
                 if not isinstance(x, Invalid)]
+    def __str__(self):
+        return "NWP({})".format(self.var)
+
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
 
 class SouthwardPoint(object):
     def __init__(self, var, n, se, sw):
@@ -166,6 +188,12 @@ class SouthwardPoint(object):
                             self.edge_ne,
                             self.edge_nw]
                 if not isinstance(x, Invalid)]
+    def __str__(self):
+        return "SWP({})".format(self.var)
+
+    @property
+    def coords(self):
+        return self.n, self.se, self.sw
 
 # This function figures out how wide row y should be, and the coordinates of the westernmost hex in that column.
 # I figured it out by drawing a lot of pictures. The northwest corner (the first hex of row 0) is hex 0,0,0 in the
@@ -192,6 +220,15 @@ def regularize_coords(n, se, sw):
     sum = n + se + sw
     adj = (sum + 1) // 3
     return n - adj, se - adj, sw - adj
+
+def coord_add(left, right):
+    ln, lse, lsw = left
+    rn, rse, rsw = right
+    return ln+rn, lse+rse, lsw+rsw
+
+def coord_neg(input):
+    n, se, sw = input
+    return -n, -se, -sw
 
 # This class describes an oblong (possibly degenerate) hexagon. height is the total number of rows in the grid.
 # width is the width of the row containing the west corner, which is the same as the maximum width of a row.
@@ -334,7 +371,7 @@ class HexGrid(object):
                 sw = sw + 1
             # start to ne of first hex
             n = n + 1
-            for _ in range(row_width + 1):
+            for _ in range(row_width):
                 # make edge to ne
                 ne_ev = edgegen('{}nw_se_{},{},{}'.format(basename, n, se, sw))
                 ne_e = NW_SE_Edge(ne_ev, n, se, sw)
@@ -450,3 +487,15 @@ class HexGrid(object):
     def points(self):
         return self.southward_points + self.northward_points
 
+    @property
+    def rows(self):
+        for y in range(self.height):
+            row_width, n, se, sw = calc_bounds(self.width, self.west_row, self.east_row, y)
+            yield [self.cell(n, se+x, sw-x) for x in range(row_width)]
+
+
+# g = HexGrid(1, 1, 0, 0)
+#
+# print([str(c) for c in g.cells])
+# print([str(e) for e in g.edges])
+# print([str(p) for p in g.points])
