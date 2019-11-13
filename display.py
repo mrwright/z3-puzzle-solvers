@@ -202,6 +202,14 @@ class CellContext(object):
         else:
             self.ctx.stroke()
 
+    def line(self, x0, y0, x1, y1, size=1, color=(0, 0, 0, 1)):
+        r, g, b, a = color
+        self.ctx.set_source_rgba(b, g, r, a)
+        self.ctx.set_line_width(size)
+        self.ctx.move_to(self.x0 + self.scale*x0, self.y0 + self.scale*y0)
+        self.ctx.line_to(self.x0 + self.scale*x1, self.y0 + self.scale*y1)
+        self.ctx.stroke()
+
 def draw_grid(grid, model, scale,
               cell_fn=None, horiz_fn=None, vert_fn=None,
               point_fn=None):
