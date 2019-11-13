@@ -1,4 +1,4 @@
-boto==2.49.0
+more_itertools>=1.0
 pycairo==1.18.1
 pygame==1.9.6
 six==1.12.0
