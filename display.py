@@ -231,13 +231,13 @@ def draw_text(ctx, x, y, t):
     ctx.move_to(x - w/2, y + h/2)
     ctx.show_text(t)
 
-def input(events):
-    for event in events:
-        if event.type == pygame.QUIT:
-            sys.exit(0)
-        elif event.type == pygame.KEYDOWN:
-            if event.key == 27:
-                sys.exit(0)
+def input(event):
+    if event.type == pygame.QUIT:
+        return False
+    elif event.type == pygame.KEYDOWN:
+        if event.key == 27:
+            return False
+    return True
 
 def get_surface(width, height):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
@@ -252,7 +252,7 @@ def show_surface(surface):
     width = surface.get_width()
     height = surface.get_height()
 
-    pygame.init()
+    pygame.display.init()
     pygame.display.set_mode((width, height))
 
     screen = pygame.display.get_surface()
@@ -266,5 +266,11 @@ def show_surface(surface):
     screen.blit(image, (0, 0))
     pygame.display.flip()
 
-    while True:
-        input(pygame.event.get())
+    # Only notify Python for these event types:
+    pygame.event.set_blocked(None)
+    pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN])
+
+    while input(pygame.event.wait()):
+        pass
+
+    pygame.display.quit()
