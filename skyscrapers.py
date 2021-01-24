@@ -2,13 +2,20 @@ from z3 import *
 
 from grid import Grid
 from display import draw_grid
-from adjacency_manager import solve
-from invalidobj import EAnd, IOr, Invalid
 
+# left_givens = [4, 4, 0, 0, 0]
+# top_givens = [0, 0, 2, 1, 0]
+# bottom_givens = [2, 0, 1, 0, 0]
+# right_givens = [0, 0, 5, 0, 0]
+
+left_givens = [2, 2, 1, 4, 3]
+right_givens = [3, 3, 2, 1, 2]
+top_givens = [2, 2, 1, 3, 4]
+bottom_givens = [3, 2, 3, 1, 2]
+
+
+w = len(left_givens)
 s = Solver()
-
-#w = 5
-w = 6
 g = Grid(w, w)
 left = Grid(w, w, 'left')
 right = Grid(w, w, 'right')
@@ -44,16 +51,6 @@ for i in range(w):
               [right.cell(w - 1 - j, i).var for j in range(w)])
     constrain([g.cell(i, w - 1 - j).var for j in range(w)],
               [bottom.cell(i, w - 1 - j).var for j in range(w)])
-
-# left_givens = [4, 4, 0, 0, 0]
-# top_givens = [0, 0, 2, 1, 0]
-# bottom_givens = [2, 0, 1, 0, 0]
-# right_givens = [0, 0, 5, 0, 0]
-
-left_givens = [5, 3, 0, 2, 0, 0]
-right_givens = [0, 0, 3, 2, 2, 0]
-top_givens = [3, 0, 0, 0, 0, 4]
-bottom_givens = [0, 0, 3, 4, 3, 0]
 
 for i in range(w):
     if left_givens[i] != 0:

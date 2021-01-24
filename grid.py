@@ -44,6 +44,10 @@ class HorizEdge(object):
         return [x for x in [self.cell_below, self.cell_above]
                 if not isinstance(x, Invalid)]
 
+    @property
+    def is_outside(self):
+        return len(self.cells()) < 2
+
     def __str__(self):
         return "Horiz({})".format(self.var)
 
@@ -62,6 +66,10 @@ class VertEdge(object):
     def cells(self):
         return [x for x in [self.cell_left, self.cell_right]
                 if not isinstance(x, Invalid)]
+
+    @property
+    def is_outside(self):
+        return len(self.cells()) < 2
 
     def __str__(self):
         return "Vert({})".format(self.var)
@@ -86,6 +94,10 @@ class Point(object):
                             self.edge_left,
                             self.edge_right]
                 if not isinstance(x, Invalid)]
+
+    @property
+    def is_outside(self):
+        return len(self.edges()) < 4
 
     def horiz_edge(self, offs):
         assert offs != 0
