@@ -25,6 +25,10 @@ class Cell(object):
                             self.cell_left, self.cell_right]
                 if not isinstance(x, Invalid)]
 
+    @property
+    def coords(self):
+        return self.x, self.y
+
     def __str__(self):
         return "Cell({} @ {},{})".format(self.var, self.x, self.y)
 

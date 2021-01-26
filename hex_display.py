@@ -21,6 +21,7 @@ with open(os.devnull, 'w') as f:
     # enable stdout
     sys.stdout = oldstdout
 
+# TODO: use cairo context transforms properly instead of passing scale everywhere
 def transform_coords(coords, scale):
     n, se, sw = coords
     x = se - sw

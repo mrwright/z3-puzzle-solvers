@@ -21,6 +21,7 @@ with open(os.devnull, 'w') as f:
     # enable stdout
     sys.stdout = oldstdout
 
+# TODO use cairo context transforms properly instead of passing scale around everywhere
 def transform_x(x, scale):
     return scale/2 + x * scale
 
@@ -65,14 +66,8 @@ class PointContext(object):
                            size, size)
         self.ctx.fill()
 
-    def draw_circle(self, size=10, color=(0, 0, 0, 1), fill=False):
-        r, g, b, a = color
-        self.ctx.set_source_rgba(b, g, r, a)
-        self.ctx.arc(self.x0, self.y0, size, 0, 6.3)
-        if fill:
-            self.ctx.fill()
-        else:
-            self.ctx.stroke()
+    def draw_circle(self, size=10, *a, **kw):
+        _draw_circle(self.ctx, self.x0, self.y0, size, *a, **kw)
 
 class EdgeContext(object):
     def __init__(self, surface, edge, model, scale):
@@ -104,11 +99,19 @@ class EdgeContext(object):
 
     def draw(self, width=1, color=(0, 0, 0, 1)):
         self.ctx.set_line_width(width)
+        self.ctx.set_line_cap(cairo.LINE_CAP_SQUARE)
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
         self.ctx.move_to(self.x0, self.y0)
         self.ctx.line_to(self.x1, self.y1)
         self.ctx.stroke()
+
+    def draw_circle(self, size=None, *a, **kw):
+        # TODO: consistent name (circle vs. draw_circle)
+        if not size:
+            size = self.scale / 2.3
+        _draw_circle(self.ctx, (self.x0 + self.x1)/2, (self.y0 + self.y1)/2, size, *a, **kw)
+
 
 class HorizEdgeContext(EdgeContext):
     def __init__(self, *a, **kw):
@@ -190,17 +193,11 @@ class CellContext(object):
         draw_text(self.ctx, self.mx, self.my, text)
         self.ctx.stroke()
 
-    def circle(self, size=None, color=(0, 0, 0, 1), fill=False):
+    def circle(self, size=None, *a, **kw):
         # TODO: consistent name (circle vs. draw_circle)
         if not size:
-            size = self.scale/2.3
-        r, g, b, a = color
-        self.ctx.set_source_rgba(b, g, r, a)
-        self.ctx.arc(self.mx, self.my, size, 0, 6.3)
-        if fill:
-            self.ctx.fill()
-        else:
-            self.ctx.stroke()
+            size = self.scale / 2.3
+        _draw_circle(self.ctx, self.mx, self.my, size, *a, **kw)
 
     def line(self, x0, y0, x1, y1, size=1, color=(0, 0, 0, 1)):
         r, g, b, a = color
@@ -209,6 +206,16 @@ class CellContext(object):
         self.ctx.move_to(self.x0 + self.scale*x0, self.y0 + self.scale*y0)
         self.ctx.line_to(self.x0 + self.scale*x1, self.y0 + self.scale*y1)
         self.ctx.stroke()
+
+def _draw_circle(ctx, x, y, size, color=(0, 0, 0, 1), fill=False):
+    r, g, b, a = color
+    ctx.set_source_rgba(b, g, r, a)
+    ctx.arc(x, y, size, 0, 6.3)
+    if fill:
+        ctx.fill()
+    else:
+        ctx.stroke()
+
 
 def draw_grid(grid, model, scale,
               cell_fn=None, horiz_fn=None, vert_fn=None,
