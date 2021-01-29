@@ -114,6 +114,12 @@ def draw_cell(ctx):
     else:
         color = ctx.model[ctx.cell.var]
         realcolor = colors[(bool(ctx.model.eval(R(color))), bool(ctx.model.eval(Y(color))), bool(ctx.model.eval(B(color))))]
-        ctx.circle(color=realcolor, fill=True)
+        ctx.draw_circle(color=realcolor, fill=True)
+        # ctx.draw_text("hi", fontsize=14)
 
-draw_grid(g, s.model(), 30, cell_fn=draw_cell, edge_fn=draw_edge)
+def draw_point(ctx):
+    # ctx.draw_square(color=(1,0,0,1))
+    # ctx.draw_circle(color=(0,1,0,1))
+    pass
+
+draw_grid(g, s.model(), 30, cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)

@@ -1,8 +1,8 @@
+import math
 import sys
 import os
 
 import cairo
-from hexgrid import coord_add
 
 def font(family='', bold=False, italic=False):
     return cairo.ToyFontFace(
@@ -21,137 +21,109 @@ with open(os.devnull, 'w') as f:
     # enable stdout
     sys.stdout = oldstdout
 
-# TODO: use cairo context transforms properly instead of passing scale everywhere
-def transform_coords(coords, scale):
+HALF_SQRT3 = math.sqrt(3)/2
+def transform_coords(coords):
     n, se, sw = coords
-    x = se - sw
+    x = (se - sw) * HALF_SQRT3
     y = - n + se / 2 + sw / 2
-    return x * scale, y * scale
+    return x, y
+
+SQRT2 = math.sqrt(2)
+# users would much rather specify stroke widths and text sizes in device coordinates, instead of user coordinates.
+def convert_stroke_width(ctx, width):
+    # try to get an average "scaling factor", in case of non-square scaling
+    dx, dy = ctx.device_to_user_distance(width/SQRT2, width/SQRT2)
+    return math.sqrt(dx*dx+dy*dy)
 
 class PointContext(object):
-    def __init__(self, ctx, point, model, scale):
+    def __init__(self, ctx, point, model):
         self.point = point
         self.model = model
-        self.scale = scale
         self.ctx = ctx
 
-    @property
-    def c0(self):
-        return transform_coords(self.point.coords, self.scale)
-
-    def draw_square(self, size=1, color=(0, 0, 0, 1)):
+    def draw_square(self, size=(1/3), color=(0, 0, 0, 1)):
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
-        x, y = self.c0
-        self.ctx.rectangle(x - size/2, y - size/2,
+        self.ctx.rectangle(- size/2, - size/2,
                            size, size)
         self.ctx.fill()
 
-    def draw_circle(self, size=10, color=(0, 0, 0, 1), fill=False):
+    def draw_circle(self, radius=(1/3), color=(0, 0, 0, 1), fill=False, stroke_width=2):
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
-        self.ctx.arc(*self.c0, size, 0, 6.3)
+        self.ctx.arc(0, 0, radius, 0, 6.3)
         if fill:
             self.ctx.fill()
         else:
+            real_width = convert_stroke_width(self.ctx, stroke_width)
+            self.ctx.set_line_width(real_width)
             self.ctx.stroke()
 
 class EdgeContext(object):
-    def __init__(self, ctx, edge, model, scale):
+    def __init__(self, ctx, edge, model):
         self.edge = edge
         self.model = model
         self.ctx = ctx
-        self.scale = scale
 
     @property
     def val(self):
         return str(self.model[self.edge.var])
 
-    @property
-    def p0(self):
-        return transform_coords(self.edge.coords, self.scale)
-
     def draw(self, width=1, color=(0, 0, 0, 1)):
-        self.ctx.set_line_width(width)
+        self.ctx.set_line_cap(cairo.LINE_CAP_SQUARE)
+        # transform width into user space
+        real_width = convert_stroke_width(self.ctx, width)
+        self.ctx.set_line_width(real_width)
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
-        self.ctx.move_to(*self.p0)
-        self.ctx.line_to(*self.p1)
+        self.ctx.move_to(0,0)
+        self.ctx.line_to(1,0)
         self.ctx.stroke()
 
-class VertContext(EdgeContext):
-    def __init__(self, *a, **kw):
-        super(VertContext, self).__init__(*a, **kw)
-
-    @property
-    def p1(self):
-        return transform_coords(coord_add(self.edge.coords, (1, 0, 0)), self.scale)
-
-class NE_SW_Context(EdgeContext):
-    def __init__(self, *a, **kw):
-        super(NE_SW_Context, self).__init__(*a, **kw)
-
-    @property
-    def p1(self):
-        return transform_coords(coord_add(self.edge.coords, (0, 0, 1)), self.scale)
-
-class NW_SE_Context(EdgeContext):
-    def __init__(self, *a, **kw):
-        super(NW_SE_Context, self).__init__(*a, **kw)
-
-    @property
-    def p1(self):
-        return transform_coords(coord_add(self.edge.coords, (0, 1, 0)), self.scale)
 
 class CellContext(object):
-    def __init__(self, ctx, cell, model, scale):
+    def __init__(self, ctx, cell, model):
         self.ctx = ctx
         self.cell = cell
         self.model = model
-        self.scale = scale
 
     @property
     def val(self):
         return str(self.model[self.cell.var])
 
-    @property
-    def c0(self):
-        return transform_coords(self.cell.coords, self.scale)
-
     def fill(self, r, g, b, a):
         self.ctx.set_source_rgba(b, g, r, a)
         # start at n corner
-        self.ctx.move_to(*self.c0)
-        self.ctx.rel_move_to(*transform_coords((1, 0, 0), self.scale))
+        self.ctx.move_to(0, 0)
+        self.ctx.rel_move_to(*transform_coords((1, 0, 0)))
 
         # walk around hex
-        self.ctx.rel_line_to(*transform_coords((0, 1, 0), self.scale))
-        self.ctx.rel_line_to(*transform_coords((-1, 0, 0), self.scale))
-        self.ctx.rel_line_to(*transform_coords((0, 0, 1), self.scale))
-        self.ctx.rel_line_to(*transform_coords((0, -1, 0), self.scale))
-        self.ctx.rel_line_to(*transform_coords((1, 0, 0), self.scale))
-        self.ctx.rel_line_to(*transform_coords((0, 0, -1), self.scale))
+        self.ctx.rel_line_to(*transform_coords((0, 1, 0)))
+        self.ctx.rel_line_to(*transform_coords((-1, 0, 0)))
+        self.ctx.rel_line_to(*transform_coords((0, 0, 1)))
+        self.ctx.rel_line_to(*transform_coords((0, -1, 0)))
+        self.ctx.rel_line_to(*transform_coords((1, 0, 0)))
+        self.ctx.rel_line_to(*transform_coords((0, 0, -1)))
 
         # fill it
         self.ctx.fill()
 
-    def text(self, text, fontsize=12, family='', bold=False, italic=False):
-        self.ctx.set_font_size(fontsize)
+    def draw_text(self, text, fontsize=12, family='', bold=False, italic=False):
+        self.ctx.set_font_size(convert_stroke_width(self.ctx, fontsize))
         self.ctx.set_font_face(font(family, bold, italic))
         self.ctx.set_source_rgba(0, 0, 0, 1)
-        draw_text(self.ctx, *self.c0, text)
+        draw_text(self.ctx, 0, 0, text)
         self.ctx.stroke()
 
-    def circle(self, size=None, color=(0, 0, 0, 1), fill=False):
+    def draw_circle(self, size=1/1.5, color=(0, 0, 0, 1), fill=False, stroke_width=1):
         # TODO: consistent name (circle vs. draw_circle)
-        if not size:
-            size = self.scale/1.5
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
-        self.ctx.arc(*self.c0, size, 0, 6.3)
+        self.ctx.arc(0, 0, size, 0, 6.3)
         if fill:
             self.ctx.fill()
         else:
+            self.ctx.set_line_width(convert_stroke_width(self.ctx, stroke_width))
             self.ctx.stroke()
 
 def draw_grid(grid, model, scale,
@@ -161,22 +133,30 @@ def draw_grid(grid, model, scale,
 
     if cell_fn:
         for cell in grid.cells:
-            cell_ctx = CellContext(ctx, cell, model, scale)
+            ctx.save()
+            # move context so 0,0 is the center of the cell
+            ctx.translate(*transform_coords(cell.coords))
+            cell_ctx = CellContext(ctx, cell, model)
             cell_fn(cell_ctx)
+            ctx.restore()
     if edge_fn:
-        for vert in grid.verts:
-            vert_ctx = VertContext(ctx, vert, model, scale)
-            edge_fn(vert_ctx)
-        for ne_sw in grid.ne_sws:
-            ne_sw_ctx = NE_SW_Context(ctx, ne_sw, model, scale)
+        for edge in grid.edges:
+            ctx.save()
+            # set up context so that the edge goes from 0,0 to 1,0
+            ctx.translate(*transform_coords(edge.coords))
+            d_x, d_y = transform_coords(edge.vector)
+            ctx.transform(cairo.Matrix(d_x, d_y, -d_y, d_x, 0, 0))
+            ne_sw_ctx = EdgeContext(ctx, edge, model)
             edge_fn(ne_sw_ctx)
-        for nw_se in grid.nw_ses:
-            nw_se_ctx = NW_SE_Context(ctx, nw_se, model, scale)
-            edge_fn(nw_se_ctx)
+            ctx.restore()
     if point_fn:
         for point in grid.points:
-            point_ctx = PointContext(ctx, point, model, scale)
+            ctx.save()
+            # move context so 0,0 is the point
+            ctx.translate(*transform_coords(point.coords))
+            point_ctx = PointContext(ctx, point, model)
             point_fn(point_ctx)
+            ctx.restore()
     show_surface(surface)
 
 def draw_text(ctx, x, y, t):
@@ -207,7 +187,7 @@ def get_surface(grid, scale):
 
     # translate context so user origin and hex origin coincide
     ctx.translate((grid.west_row + 1.5) * scale, 1.5 * scale)
-
+    ctx.scale(scale, scale)
     return surface, ctx
 
 def show_surface(surface):

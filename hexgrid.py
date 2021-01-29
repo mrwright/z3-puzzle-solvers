@@ -89,6 +89,10 @@ class VertEdge(object):
     def coords(self):
         return self.n, self.se, self.sw
 
+    @property
+    def vector(self):
+        return 1, 0, 0
+
 class NW_SE_Edge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -114,6 +118,10 @@ class NW_SE_Edge(object):
     def coords(self):
         return self.n, self.se, self.sw
 
+    @property
+    def vector(self):
+        return 0, 1, 0
+
 class NE_SW_Edge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -138,6 +146,10 @@ class NE_SW_Edge(object):
     @property
     def coords(self):
         return self.n, self.se, self.sw
+
+    @property
+    def vector(self):
+        return 0, 0, 1
 
 class NorthwardPoint(object):
     def __init__(self, var, n, se, sw):
