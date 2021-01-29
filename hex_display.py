@@ -116,7 +116,6 @@ class CellContext(object):
         self.ctx.stroke()
 
     def draw_circle(self, size=1/1.5, color=(0, 0, 0, 1), fill=False, stroke_width=1):
-        # TODO: consistent name (circle vs. draw_circle)
         r, g, b, a = color
         self.ctx.set_source_rgba(b, g, r, a)
         self.ctx.arc(0, 0, size, 0, 6.3)
@@ -127,8 +126,9 @@ class CellContext(object):
             self.ctx.stroke()
 
 def draw_grid(grid, model, scale,
-              cell_fn=None, edge_fn=None,
-              point_fn=None):
+              cell_fn=None, edge_fn=None, point_fn=None,
+              vert_fn=None, ne_sw_fn=None, nw_se_fn=None,
+              north_point_fn=None, south_point_fn=None):
     surface, ctx = get_surface(grid, scale)
 
     if cell_fn:
@@ -139,24 +139,39 @@ def draw_grid(grid, model, scale,
             cell_ctx = CellContext(ctx, cell, model)
             cell_fn(cell_ctx)
             ctx.restore()
-    if edge_fn:
+    if edge_fn or vert_fn or ne_sw_fn or nw_se_fn:
+        edge_fns = {
+            (1,0,0): vert_fn or edge_fn,
+            (0,1,0): nw_se_fn or edge_fn,
+            (0,0,1): ne_sw_fn or edge_fn,
+        }
         for edge in grid.edges:
-            ctx.save()
-            # set up context so that the edge goes from 0,0 to 1,0
-            ctx.translate(*transform_coords(edge.coords))
-            d_x, d_y = transform_coords(edge.vector)
-            ctx.transform(cairo.Matrix(d_x, d_y, -d_y, d_x, 0, 0))
-            ne_sw_ctx = EdgeContext(ctx, edge, model)
-            edge_fn(ne_sw_ctx)
-            ctx.restore()
-    if point_fn:
+            fn = edge_fns[edge.vector]
+            if fn:
+                ctx.save()
+                # set up context so that the edge goes from 0,0 to 1,0
+                ctx.translate(*transform_coords(edge.coords))
+                d_x, d_y = transform_coords(edge.vector)
+                ctx.transform(cairo.Matrix(d_x, d_y, -d_y, d_x, 0, 0))
+                edge_ctx = EdgeContext(ctx, edge, model)
+                fn(edge_ctx)
+                ctx.restore()
+    if point_fn or north_point_fn or south_point_fn:
+        point_fns = {
+            1: north_point_fn or point_fn,
+            -1: south_point_fn or point_fn,
+        }
         for point in grid.points:
-            ctx.save()
-            # move context so 0,0 is the point
-            ctx.translate(*transform_coords(point.coords))
-            point_ctx = PointContext(ctx, point, model)
-            point_fn(point_ctx)
-            ctx.restore()
+            fn = point_fns[point.direction]
+            if fn:
+                ctx.save()
+                # move context so 0,0 is the point
+                # and turn it upside down for southward points
+                ctx.translate(*transform_coords(point.coords))
+                ctx.scale(point.direction, point.direction)
+                point_ctx = PointContext(ctx, point, model)
+                fn(point_ctx)
+                ctx.restore()
     show_surface(surface)
 
 def draw_text(ctx, x, y, t):

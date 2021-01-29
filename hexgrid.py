@@ -179,6 +179,10 @@ class NorthwardPoint(object):
     def coords(self):
         return self.n, self.se, self.sw
 
+    @property
+    def direction(self):
+        return 1
+
 class SouthwardPoint(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -206,6 +210,10 @@ class SouthwardPoint(object):
     @property
     def coords(self):
         return self.n, self.se, self.sw
+
+    @property
+    def direction(self):
+        return -1
 
 # This function figures out how wide row y should be, and the coordinates of the westernmost hex in that column.
 # I figured it out by drawing a lot of pictures. The northwest corner (the first hex of row 0) is hex 0,0,0 in the

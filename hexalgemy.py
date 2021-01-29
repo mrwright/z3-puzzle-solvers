@@ -120,6 +120,11 @@ def draw_cell(ctx):
 def draw_point(ctx):
     # ctx.draw_square(color=(1,0,0,1))
     # ctx.draw_circle(color=(0,1,0,1))
+    # ctx.ctx.set_line_width(1/10)
+    # ctx.ctx.set_source_rgba(0,0,1,1)
+    # ctx.ctx.move_to(0,0)
+    # ctx.ctx.line_to(0, -0.2)
+    # ctx.ctx.stroke()
     pass
 
-draw_grid(g, s.model(), 30, cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)
+draw_grid(g, s.model(), 40, cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)
