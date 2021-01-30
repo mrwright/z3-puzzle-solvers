@@ -1,8 +1,6 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
-from adjacency_manager import solve
+from grid import Grid, RectDisplay
 from invalidobj import Invalid
 
 s = Solver()
@@ -11,8 +9,8 @@ g = Grid(20, 20)
 
 def factors(n):
     for i in range(1, n+1):
-        if i * (n/i) == n:
-            yield (i, n/i)
+        if i * (n//i) == n:
+            yield (i, n//i)
 
 def possibilities(px, py, n):
     gw = g.width
@@ -89,9 +87,9 @@ m = s.model()
 
 def cell_draw(ctx):
     ctx.fill(1, 0.5, 0.5, 1)
-    given = givens[ctx.gy][ctx.gx]
+    given = givens[ctx.cell.y][ctx.cell.x]
     if given != ' ':
-        ctx.text(str(ord(given) - ord('0')), fontsize=24)
+        ctx.draw_text(str(ord(given) - ord('0')), fontsize=24)
 
 def get_model(m, v):
     if isinstance(v, Invalid):
@@ -109,4 +107,6 @@ def horiz_edge_draw(ctx):
     bottom = get_model(ctx.model, ctx.edge.cell_below.var)
     ctx.draw(width=5 if top != bottom else 1)
 
-draw_grid(g, m, 64, cell_draw, horiz_edge_draw, vert_edge_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=vert_edge_draw)
+display.set_horiz_edge_fn(horiz_edge_draw)
+display.display_grid(g, m, 64)

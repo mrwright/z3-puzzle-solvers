@@ -1,9 +1,6 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
-from adjacency_manager import solve
-from invalidobj import EAnd, IOr, Invalid
+from grid import Grid, RectDisplay
 
 s = Solver()
 #g = Grid(6, 6)
@@ -92,11 +89,12 @@ m = s.model()
 
 
 def cell_draw(ctx):
-    if givens[ctx.gy][ctx.gx] != ' ':
+    if givens[ctx.cell.y][ctx.cell.x] != ' ':
         ctx.fill(1, 0.7, 0.7, 1)
     else:
         ctx.fill(1, 1, 1, 1)
 
-    ctx.circle(fill=(ctx.val == '0'))
+    ctx.draw_circle(fill=(ctx.val == '0'))
 
-draw_grid(g, m, 30, cell_draw)
+display = RectDisplay(cell_fn=cell_draw)
+display.display_grid(g, m, 30)

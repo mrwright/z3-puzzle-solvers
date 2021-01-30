@@ -3,3 +3,4 @@ pycairo>=1.18.1
 pygame>=1.9.6
 six>=1.12.0
 z3-solver>=4.8.5.0
+Pillow>=8.0.0

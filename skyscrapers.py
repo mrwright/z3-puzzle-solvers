@@ -1,7 +1,7 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
+import display
+from grid import Grid, RectDisplay
 
 # left_givens = [4, 4, 0, 0, 0]
 # top_givens = [0, 0, 2, 1, 0]
@@ -66,9 +66,18 @@ s.check()
 m = s.model()
 
 def cell_draw(ctx):
-    ctx.text(ctx.val, fontsize=24)
+    ctx.draw_text(ctx.val, fontsize=24)
+    if ctx.cell.x == 0:
+        display.draw_text(ctx.ctx, -1.5, 0, left_givens[ctx.cell.y], fontsize=24)
+    elif ctx.cell.x == w-1:
+        display.draw_text(ctx.ctx, 1.5, 0, right_givens[ctx.cell.y], fontsize=24)
+    if ctx.cell.y == 0:
+        display.draw_text(ctx.ctx, 0, -1.5, top_givens[ctx.cell.x], fontsize=24)
+    elif ctx.cell.y == w-1:
+        display.draw_text(ctx.ctx, 0, 1.5, bottom_givens[ctx.cell.x], fontsize=24)
 
 def edge_draw(ctx):
     ctx.draw(width=1)
 
-draw_grid(g, m, 64, cell_draw, edge_draw, edge_draw)
+grid_display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw, padding=1)
+grid_display.display_grid(g, m, 64)

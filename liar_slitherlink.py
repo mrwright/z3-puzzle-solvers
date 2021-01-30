@@ -1,7 +1,6 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
+from grid import Grid, RectDisplay
 from adjacency_manager import solve
 
 s = Solver()
@@ -79,19 +78,20 @@ def adjacency_fn(grid, model):
 m = solve(s, g, adjacency_fn)
 
 def cell_draw(ctx):
-    given = givens[ctx.gy][ctx.gx]
+    given = givens[ctx.cell.y][ctx.cell.x]
     count = sum([m[edge.var].as_long() for edge in ctx.cell.edges()])
     if given == ' ' or ord(given) - ord('0') == count:
         ctx.fill(1., 1., 1., 1.)
     else:
         ctx.fill(1, 0.5, 0.5, 1)
-    ctx.text(str(given), fontsize=24)
+    ctx.draw_text(str(given), fontsize=24)
 
 def edge_draw(ctx):
     if ctx.val == '1':
         ctx.draw(width=4)
 
 def point_draw(ctx):
-    ctx.draw_square(size=7)
+    ctx.draw_square(size=1/8)
 
-draw_grid(g, m, 64, cell_draw, edge_draw, edge_draw, point_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw, point_fn=point_draw)
+display.display_grid(g, m, 64)

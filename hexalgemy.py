@@ -1,6 +1,5 @@
 from z3 import *
-from hexgrid import HexGrid, coord_add
-from hex_display import draw_grid
+from hexgrid import HexGrid, HexDisplay, coord_add
 from invalidobj import Invalid, IAnd, IOr
 from functools import reduce
 
@@ -118,7 +117,7 @@ def draw_cell(ctx):
         # ctx.draw_text("hi", fontsize=14)
 
 def draw_point(ctx):
-    # ctx.draw_square(color=(1,0,0,1))
+    ctx.draw_square(color=(1,0,0,1))
     # ctx.draw_circle(color=(0,1,0,1))
     # ctx.ctx.set_line_width(1/10)
     # ctx.ctx.set_source_rgba(0,0,1,1)
@@ -127,4 +126,11 @@ def draw_point(ctx):
     # ctx.ctx.stroke()
     pass
 
-draw_grid(g, s.model(), 40, cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)
+def draw_south_point(ctx):
+    ctx.draw_circle(color=(0,1,0,1))
+
+display = HexDisplay(cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)
+display.set_southward_point_fn(draw_south_point)
+
+display.display_grid(g, s.model(), 40)
+

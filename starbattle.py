@@ -1,8 +1,7 @@
 from collections import defaultdict
 
-from grid import Grid
+from grid import Grid, RectDisplay
 import z3
-import display
 
 givens = [
     "aaabbbbccd",
@@ -50,11 +49,12 @@ for p in board.points:
 print(s.check())
 m = s.model()
 
-def draw_edge(ctx:display.EdgeContext):
+def draw_edge(ctx):
     ctx.draw(width=5 if (ctx.edge.is_outside or len({givens[cell.y][cell.x] for cell in ctx.edge.cells()}) == 2) else 1)
 
-def draw_cell(ctx:display.CellContext):
+def draw_cell(ctx):
     if ctx.val == "1":
-        ctx.circle(fill=True)
+        ctx.draw_circle(fill=True)
 
-display.draw_grid(board, m, 64, cell_fn=draw_cell, vert_fn=draw_edge, horiz_fn=draw_edge)
+display = RectDisplay(cell_fn=draw_cell, edge_fn=draw_edge)
+display.display_grid(board, m, 64)

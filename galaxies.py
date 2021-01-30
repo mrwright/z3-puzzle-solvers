@@ -1,7 +1,7 @@
 import z3
 
-from grid import Grid
 import display
+from grid import Grid, RectDisplay
 
 # I can't really think of a good way to specify the givens in one of these but this will have to do
 givens = [
@@ -152,31 +152,30 @@ for c in board.cells:
 
 print(s.check())
 
-def draw_edge(ctx:display.EdgeContext):
+def draw_edge(ctx, is_given):
     ctx.draw(width=5 if ctx.val == "True" else 1)
+    if is_given:
+        display.draw_circle(ctx.ctx, 0.5, 0, radius=0.15, fill=True, color=(0,1,0,1))
 
-def draw_vert(ctx:display.VertEdgeContext):
-    draw_edge(ctx)
-    if vert_given(ctx.edge):
-        ctx.draw_circle(size=15, fill=True, color=(0, 1, 0, 1))
+def draw_vert(ctx):
+    draw_edge(ctx, vert_given(ctx.edge))
 
-def draw_horiz(ctx:display.HorizEdgeContext):
-    draw_edge(ctx)
-    if horiz_given(ctx.edge):
-        ctx.draw_circle(size=15, fill=True, color=(0, 1, 0, 1))
+def draw_horiz(ctx):
+    draw_edge(ctx, horiz_given(ctx.edge))
 
-def draw_point(ctx:display.PointContext):
+def draw_point(ctx):
     if point_given(ctx.point):
-        ctx.draw_circle(size=15, fill=True, color=(0, 1, 0, 1))
+        ctx.draw_circle(radius=0.15, fill=True, color=(0, 1, 0, 1))
 
-def draw_cell(ctx:display.CellContext):
+def draw_cell(ctx):
     if cell_given(ctx.cell):
-        ctx.circle(size=15, fill=True, color=(0, 1, 0, 1))
+        ctx.draw_circle(radius=0.3, fill=True, color=(0, 1, 0, 1))
     # galaxy = ctx.model.eval(cell_galaxy(ctx.cell))
     # dx = ctx.model.eval(DX(ctx.cell.var))
     # dy = ctx.model.eval(DY(ctx.cell.var))
     # dist = ctx.model.eval(DIST(ctx.cell.var))
     # ctx.text(f"{galaxy},{dx},{dy},{dist}", fontsize=18)
 
-
-display.draw_grid(board, s.model(), 64, cell_fn=draw_cell, horiz_fn=draw_horiz, vert_fn=draw_vert, point_fn=draw_point)
+rect_display = RectDisplay(cell_fn=draw_cell, point_fn=draw_point, edge_fn=draw_vert)
+rect_display.set_horiz_edge_fn(draw_horiz)
+rect_display.display_grid(board, s.model(), 64)
