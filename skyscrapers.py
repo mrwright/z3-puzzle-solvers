@@ -68,13 +68,13 @@ m = s.model()
 def cell_draw(ctx):
     ctx.draw_text(ctx.val, fontsize=24)
     if ctx.cell.x == 0:
-        display.draw_text(ctx.ctx, -1.5, 0, left_givens[ctx.cell.y], fontsize=24)
+        ctx.draw_text(left_givens[ctx.cell.y], -0.8, 0, fontsize=24)
     elif ctx.cell.x == w-1:
-        display.draw_text(ctx.ctx, 1.5, 0, right_givens[ctx.cell.y], fontsize=24)
+        ctx.draw_text(right_givens[ctx.cell.y], 0.8, 0, fontsize=24)
     if ctx.cell.y == 0:
-        display.draw_text(ctx.ctx, 0, -1.5, top_givens[ctx.cell.x], fontsize=24)
+        ctx.draw_text(top_givens[ctx.cell.x], 0, -0.8, fontsize=24)
     elif ctx.cell.y == w-1:
-        display.draw_text(ctx.ctx, 0, 1.5, bottom_givens[ctx.cell.x], fontsize=24)
+        ctx.draw_text(bottom_givens[ctx.cell.x], 0, 0.8, fontsize=24)
 
 def edge_draw(ctx):
     ctx.draw(width=1)
