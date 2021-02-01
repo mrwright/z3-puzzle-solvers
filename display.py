@@ -105,7 +105,8 @@ class BaseDisplay:
         pygame.display.flip()
 
     def _draw_grid_elements(self, ctx, model, grid, x, y, *extra):
-        with transform_drawing_context(ctx, cairo.Matrix(x0=x, y0=y)):
+        with transform_drawing_context(ctx):
+            ctx.translate(x, y)
             for cell in grid.cells:
                 fn, matrix = self._setup_cell(cell)
                 if fn:
@@ -304,10 +305,11 @@ def _fill_or_stroke(ctx, fill, stroke_width):
         ctx.stroke()
 
 @contextmanager
-def transform_drawing_context(ctx, transform):
+def transform_drawing_context(ctx, transform=cairo.Matrix()):
     """
     Temporarily transform the drawing context. Can accept a raw cairo Context, or any of the specialized grid-part
-    contexts.
+    contexts. If you don't have a handy transformation matrix, you can just manipulate the context directly inside the
+    with block.
     """
     if not isinstance(ctx, cairo.Context):
         real_ctx = ctx.ctx

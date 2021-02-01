@@ -70,8 +70,8 @@ class Sprite(object):
 
 def draw_sprite(ctx:display.CellContext, sprite, t_start, t_end, sprite_fn):
     """
-    If sprite is in the given cell at any time between t_start (inclusive) and t_end (exclusive), rotates the drawing
-    context so that the sprite is pointing in the positive X direction, and calls sprite_fn(ctx, t)
+    If sprite is in the given cell at any time t between t_start (inclusive) and t_end (exclusive), rotates the drawing
+    context so that the sprite is pointing in the positive X direction at time t, and calls sprite_fn(ctx, t)
     """
     for t in range(t_start, t_end):
         if ctx.model.eval(sprite.in_cell(ctx.cell, t)):

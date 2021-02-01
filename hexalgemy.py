@@ -114,7 +114,9 @@ colors = {
 def draw_cell(ctx):
     if ctx.cell.given != ' ':
         color = colors[given_values[ctx.cell.given]]
-        with transform_drawing_context(ctx, cairo.Matrix(xx=0.8, yy=0.8)):
+        with transform_drawing_context(ctx):
+            # this is just a trick to use fill() to make a smaller hexagon
+            ctx.ctx.scale(0.8, 0.8)
             ctx.fill(*color)
     else:
         interp_color = as_tuple(ctx.model, ctx.cell.var)
