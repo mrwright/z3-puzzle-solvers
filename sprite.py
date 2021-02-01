@@ -1,12 +1,19 @@
+from more_itertools import chunked
 from z3 import And, EnumSort, Function, IntSort
 
+import display
 from z3utils import Switch
 
 Dir, dir_values = EnumSort('Dir', ('north', 'east', 'south', 'west'))
 north, east, south, west = dir_values
 
 str_to_dir = {str(d): d for d in dir_values}
-
+dir_to_vector = {
+    north: (0, -1),
+    east: (1, 0),
+    south: (0, 1),
+    west: (-1, 0),
+}
 
 class Sprite(object):
     """
@@ -60,3 +67,29 @@ class Sprite(object):
         x and y do not have to be valid Grid coordinates.
         """
         return And(self.x(t) == x, self.y(t) == y)
+
+def draw_sprite(ctx:display.CellContext, sprite, t_start, t_end, sprite_fn):
+    """
+    If sprite is in the given cell at any time between t_start (inclusive) and t_end (exclusive), rotates the drawing
+    context so that the sprite is pointing in the positive X direction, and calls sprite_fn(ctx, t)
+    """
+    for t in range(t_start, t_end):
+        if ctx.model.eval(sprite.in_cell(ctx.cell, t)):
+            dir = ctx.model.eval(sprite.dir(t))
+            vx, vy = dir_to_vector[dir]
+            with display.transform_drawing_context(ctx, display.rotation_matrix_for_vector(vx, vy)):
+                sprite_fn(ctx, t)
+
+def make_frames(grid, frame_breaks, frames_per_row, spacing=3):
+    """
+    Turns a grid (presumably using sprites) and a list of times, and produces a list of "augmented grids" suitable
+    to plug into display.draw_all_grids(). The extra data for each grid will be the frame number, the start time of
+    that frame, and the start time of the next frame.
+    """
+    raw_grids = [(grid, frame, frame_breaks[frame], frame_breaks[frame+1]) for frame in range(len(frame_breaks) - 1)]
+    raw_grid_rows = chunked(raw_grids, frames_per_row)
+    frame_width = grid.width + spacing
+    frame_height = grid.height + spacing
+    frames = [(grid, x * frame_width, y * frame_height, frame, t_start, t_end)
+              for y, row in enumerate(raw_grid_rows) for x, (grid, frame, t_start, t_end) in enumerate(row)]
+    return frames

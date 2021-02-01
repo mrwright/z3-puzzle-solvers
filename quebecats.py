@@ -1,9 +1,12 @@
+import time
+
 from more_itertools import chunked
 from six import print_
 from z3 import *
 
-from grid import Grid
-from sprite import Dir, Sprite, north, east, south, west
+from display import draw_polygon, rotation_matrix_for_vector, transform_drawing_context
+from grid import Grid, RectDisplay
+from sprite import Dir, Sprite, dir_to_vector, draw_sprite, make_frames, north, east, south, west
 from z3utils import Switch, lift_to_solver
 
 
@@ -32,6 +35,7 @@ def solve_board(board, display=False):
         solving board... solution found
         (22, 2, -1)
     """
+    start_time = time.perf_counter()
     grid = Grid(5, 5, cellgen=QuebecatCell)
     laser = Sprite('laser', grid)
     human = grid.cell_array[2, 2]
@@ -165,7 +169,7 @@ def solve_board(board, display=False):
     # but this isn't critical information; the solver would work with a looser
     # bound on the epilogue's duration.)
     firing_ticks.append(tick)
-    s.add(tick_new_firing(tick, initial_laser_dir(firing + 1 % 4)))
+    s.add(tick_new_firing(tick, initial_laser_dir((firing + 1) % 4)))
     for t in range(tick + 1, tick + 27):
         s.add(tick_epilogue(t))
 
@@ -174,7 +178,8 @@ def solve_board(board, display=False):
     if s.check() == unsat:
         print("solution not found")
     else:
-        print("solution found")
+        end_time = time.perf_counter()
+        print(f"solution found in {end_time - start_time}")
         model = s.model()
 
         # Determine the range of the final firing by finding the first tick
@@ -185,39 +190,38 @@ def solve_board(board, display=False):
             final_range += 1
             t += 1
 
+        firing_ticks.append(t)
         if display:
-            from sprite_display import draw_grid_frames_and_sprites
+            def cell_draw(ctx):
+                frame, t_start, t_end = ctx.extra
+                draw_sprite(ctx, laser, t_start, t_end, laser_draw)
 
-            def cell_draw(ctx, i):
-                if not ctx.model.eval(ctx.cell.var.has_mirror):
-                    return
-                color = (0, 0, 1, 1)
-                if ctx.model.eval(ctx.cell.var.mirror_state(ctx.t)):
-                    ctx.line(0.2, 0.8, 0.8, 0.2, color=color)
-                else:
-                    ctx.line(0.2, 0.2, 0.8, 0.8, color=color)
+                if ctx.model.eval(ctx.cell.var.has_mirror):
+                    color = (0, 0, 1, 1)
+                    if ctx.model.eval(ctx.cell.var.mirror_state(t_start)):
+                        ctx.draw_line(-0.3, 0.3, 0.3, -0.3, color=color)
+                    else:
+                        ctx.draw_line(-0.3, -0.3, 0.3, 0.3, color=color)
 
-            def edge_draw(ctx, i):
+                if ctx.cell.coords == human.coords:
+                    # orient the human correctly
+                    with transform_drawing_context(ctx, rotation_matrix_for_vector(*dir_to_vector[initial_laser_dir(frame)])):
+                        draw_polygon(ctx, [(0, 0), (-0.3, -0.3), (0.3, 0), (-0.3, 0.3)], color=(1,0,0,1))
+
+                if ctx.model.eval(laser.in_cell(ctx.cell, t_end - 1)):
+                    # draw the number outside
+                    ctx.draw_text(t_end - t_start - 1, *dir_to_vector[ctx.model.eval(laser.dir(t_end-1))], fontsize=24)
+
+            def edge_draw(ctx):
                 ctx.draw(width=3)
 
-            def sprite_draw(ctx, i):
+            def laser_draw(ctx, t):
                 color = (1, 0, 0, 1)
-                ctx.draw_rotated([(0.2, 0.8), (0.5, 0.2), (0.8, 0.8),
-                                  (0.5, 0.5), (0.2, 0.8)],
-                                 width=2, color=color)
+                ctx.draw_line(0, 0, 1, 0, color=color)
 
-                ctx.draw_rotated([(0.5, 0.2), (0.5, -0.5)],
-                                 width=1, color=color)
-                end_tick = firing_ticks[i + 1] if i < len(board) else t
-                ctx.path(ctx.t + 1, end_tick, color=color)
-                ctx.draw_rotated([(0.5, 0.5), (0.5, 0)], t=end_tick - 1,
-                                 width=1, color=color)
-
-            draw_grid_frames_and_sprites(grid, model, 32,
-                                         list(chunked(firing_ticks, 4)),
-                                         [laser],
-                                         cell_draw, edge_draw, edge_draw, None,
-                                         sprite_draw)
+            rect_display = RectDisplay(edge_fn=edge_draw, cell_fn=cell_draw, padding=1.5)
+            grids = make_frames(grid, firing_ticks, 4)
+            rect_display.display_all_grids(grids, model, 32)
 
         return (final_range,
                 model.eval(laser.x(t)).as_long(),
@@ -287,5 +291,5 @@ def solve_all():
 
 
 if __name__ == '__main__':
-    #solve_all()
+    # solve_all()
     solve_board(boards[4], display=True)

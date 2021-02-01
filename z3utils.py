@@ -1,4 +1,4 @@
-from z3 import Const, ForAll, Function, If
+from z3 import Const, ForAll, Function, If, is_algebraic_value, is_false, is_int_value, is_rational_value, is_true
 
 _unique_id = 0
 
@@ -52,3 +52,29 @@ def Switch(var, *branches):
         l, r = branches[i]
         result = If(var == l, r, result)
     return result
+
+def as_tuple(model, val):
+    tuple_size = val.sort().constructor(0).arity()
+    return tuple(interpret(model.eval(val.sort().accessor(0, i)(val))) for i in range(tuple_size))
+
+def interpret(val):
+    """
+    Try to turn a Z3 expression of a simple type into a Python value of an appropriate type, if possible
+    :param val:
+    :return:
+    """
+    if is_true(val):
+        return True
+    elif is_false(val):
+        return False
+    elif is_int_value(val):
+        return val.as_long()
+    elif is_rational_value(val):
+        return val.numerator_as_long()/val.denominator_as_long()
+    elif is_algebraic_value(val):
+        approx = val.approx(20)
+        return approx.numerator_as_long()/approx.denominator_as_long()
+    else:
+        # oh well, we tried
+        return val
+

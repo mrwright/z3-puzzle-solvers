@@ -2,6 +2,7 @@ import math
 import sys
 import os
 from collections import defaultdict
+from contextlib import contextmanager
 
 import cairo
 from PIL import Image
@@ -64,8 +65,8 @@ class BaseDisplay:
     def display_all_grids(self, grids, model, scale):
         surface, ctx = self._get_surface(grids, scale)
 
-        for grid, x, y in grids:
-            self._draw_grid_elements(ctx, grid, x, y, model)
+        for placed_grid in grids:
+            self._draw_grid_elements(ctx, model, *placed_grid)
 
         self._show_pygame_window(surface)
 
@@ -103,51 +104,39 @@ class BaseDisplay:
         screen.blit(image, (0, 0), special_flags=pygame.BLEND_PREMULTIPLIED)
         pygame.display.flip()
 
-    def _draw_grid_elements(self, ctx, grid, x, y, model):
-        ctx.save()
-        ctx.translate(x, y)
-        for cell in grid.cells:
-            fn, matrix = self._setup_cell(cell)
-            if fn:
-                ctx.save()
-                ctx.transform(matrix)
-                cell_ctx = CellContext(ctx, cell, model, self._cell_corners())
-                fn(cell_ctx)
-                ctx.restore()
-        for edge in grid.edges:
-            fn, matrix = self._setup_edge(edge)
-            if fn:
-                ctx.save()
-                ctx.transform(matrix)
-                edge_ctx = EdgeContext(ctx, edge, model)
-                fn(edge_ctx)
-                ctx.restore()
-        for point in grid.points:
-            fn, matrix = self._setup_point(point)
-            if fn:
-                ctx.save()
-                ctx.transform(matrix)
-                point_ctx = PointContext(ctx, point, model)
-                fn(point_ctx)
-                ctx.restore()
-        ctx.restore()
+    def _draw_grid_elements(self, ctx, model, grid, x, y, *extra):
+        with transform_drawing_context(ctx, cairo.Matrix(x0=x, y0=y)):
+            for cell in grid.cells:
+                fn, matrix = self._setup_cell(cell)
+                if fn:
+                    with transform_drawing_context(ctx, matrix):
+                        cell_ctx = CellContext(self, ctx, cell, model, extra)
+                        fn(cell_ctx)
+            for edge in grid.edges:
+                fn, matrix = self._setup_edge(edge)
+                if fn:
+                    with transform_drawing_context(ctx, matrix):
+                        edge_ctx = EdgeContext(self, ctx, edge, model, extra)
+                        fn(edge_ctx)
+            for point in grid.points:
+                fn, matrix = self._setup_point(point)
+                if fn:
+                    with transform_drawing_context(ctx, matrix):
+                        point_ctx = PointContext(self, ctx, point, model, extra)
+                        fn(point_ctx)
 
     def _get_surface(self, grids, scale):
-        lefts = []
-        rights = []
-        tops = []
-        bottoms = []
         def adjust(extents, x, y):
             l, t, r, b = extents
             return l+x, t+y, r+x, b+y
 
-        lefts, tops, rights, bottoms = tuple(zip(*[adjust(self._get_extents(grid), x, y) for grid, x, y in grids]))
+        lefts, tops, rights, bottoms = tuple(zip(*[adjust(self._get_extents(grid), x, y) for grid, x, y, *_ in grids]))
         left = min(lefts)
         top = min(tops)
         right = max(rights)
         bottom = max(bottoms)
 
-        # add half a grid on every side
+        # add padding on every side
         width = (right - left + self.padding * 2) * scale
         height = (bottom - top + self.padding * 2) * scale
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, int(width), int(height))
@@ -173,9 +162,12 @@ class BaseDisplay:
     def _setup_point(self, point):
         raise NotImplementedError
 
-    def _cell_corners(self):
+    def cell_corners(self):
         raise NotImplementedError
 
+    # override this if the cells in this grid type are not unit circles; it should be the radius of something
+    # that will fit entirely inside a cell
+    CELL_RADIUS = 1
 
 
 SQRT2 = math.sqrt(2)
@@ -186,10 +178,12 @@ def convert_stroke_width(ctx, width):
     return math.sqrt(dx*dx+dy*dy)
 
 class PointContext(object):
-    def __init__(self, ctx, point, model):
+    def __init__(self, display, ctx, point, model, extra):
+        self.display = display
         self.point = point
         self.model = model
         self.ctx = ctx
+        self.extra = extra
 
     def draw_square(self, size=(1/3), color=(0, 0, 0, 1)):
         self.ctx.set_source_rgba(*color)
@@ -201,10 +195,12 @@ class PointContext(object):
         draw_circle(self.ctx, 0, 0, radius, **kw)
 
 class EdgeContext(object):
-    def __init__(self, ctx, edge, model):
+    def __init__(self, display, ctx, edge, model, extra):
+        self.display = display
+        self.ctx = ctx
         self.edge = edge
         self.model = model
-        self.ctx = ctx
+        self.extra = extra
 
     @property
     def val(self):
@@ -220,13 +216,17 @@ class EdgeContext(object):
         self.ctx.line_to(1,0)
         self.ctx.stroke()
 
+    def draw_text(self, text, x=0.5, y=0, **kw):
+        draw_text(self.ctx, text, x, y, **kw)
 
 class CellContext(object):
-    def __init__(self, ctx, cell, model, corners):
+    def __init__(self, display, ctx, cell, model, extra):
+        self.display = display
         self.ctx = ctx
         self.cell = cell
         self.model = model
-        self.corners = corners
+        self.extra = extra
+        self.corners = display.cell_corners()
 
     @property
     def val(self):
@@ -240,15 +240,17 @@ class CellContext(object):
         # fill it
         self.ctx.fill()
 
-    def draw_text(self, text, **kw):
-        draw_text(self.ctx, 0, 0, text, **kw)
+    def draw_text(self, text, x=0, y=0, **kw):
+        draw_text(self.ctx, text, x, y, **kw)
 
-    def draw_circle(self, radius=1/1.5, **kw):
+    def draw_circle(self, radius=None, **kw):
+        if radius is None:
+            radius = self.display.CELL_RADIUS * 2/3
         draw_circle(self.ctx, 0, 0, radius, **kw)
 
-    def draw_line(self, x0, y0, x1, y1, size=1, color=(0, 0, 0, 1)):
+    def draw_line(self, x0, y0, x1, y1, stroke_width=2, color=(0, 0, 0, 1)):
         self.ctx.set_source_rgba(*color)
-        self.ctx.set_line_width(size)
+        self.ctx.set_line_width(convert_stroke_width(self.ctx, stroke_width))
         self.ctx.move_to(x0, y0)
         self.ctx.line_to(x1, y1)
         self.ctx.stroke()
@@ -256,18 +258,44 @@ class CellContext(object):
     def draw_line_corners(self, c0, c1, *a, **kw):
         self.draw_line(*self.corners[c0], *self.corners[c1], *a, **kw)
 
-def draw_text(ctx, x, y, t, fontsize=12, family='', bold=False, italic=False, color=(0,0,0,1)):
+def draw_text(ctx, text, x, y, fontsize=12, family='', bold=False, italic=False, color=(0, 0, 0, 1)):
     ctx.set_font_size(convert_stroke_width(ctx, fontsize))
     ctx.set_font_face(font(family, bold, italic))
     ctx.set_source_rgba(*color)
-    _, _, w, h, dx, dy = ctx.text_extents(str(t))
+    _, _, w, h, dx, dy = ctx.text_extents(str(text))
     ctx.move_to(x - w/2, y + h/2)
-    ctx.show_text(str(t))
+    ctx.show_text(str(text))
     ctx.stroke()
 
 def draw_circle(ctx, x, y, radius, color=(0, 0, 0, 1), fill=False, stroke_width=2):
     ctx.set_source_rgba(*color)
     ctx.arc(x, y, radius, 0, 6.3)
+    _fill_or_stroke(ctx, fill, stroke_width)
+
+def rotation_matrix_for_vector(vx, vy):
+    """
+    Returns a transformation matrix that converts the given vector into the vector (1, 0).
+    """
+    return cairo.Matrix(vx, vy, -vy, vx, 0, 0)
+
+def draw_polygon(ctx, points, color=(0, 0, 0, 1), fill=False, stroke_width=2):
+    """
+    Just a utility to make drawing polygons easier. I don't know why cairo doesn't have this.
+    You can also pass a grid-part-specific context.
+    """
+    if not isinstance(ctx, cairo.Context):
+        ctx = ctx.ctx
+    ctx.set_source_rgba(*color)
+    ctx.set_line_cap(cairo.LINE_CAP_BUTT)
+    ctx.set_line_join(cairo.LINE_JOIN_BEVEL)
+    ctx.move_to(*points[-1])
+    for point in points:
+        ctx.line_to(*point)
+    # go an extra step around so we get good bevels everywhere
+    ctx.line_to(*points[0])
+    _fill_or_stroke(ctx, fill, stroke_width)
+
+def _fill_or_stroke(ctx, fill, stroke_width):
     if fill:
         ctx.fill()
     else:
@@ -275,4 +303,19 @@ def draw_circle(ctx, x, y, radius, color=(0, 0, 0, 1), fill=False, stroke_width=
         ctx.set_line_width(real_width)
         ctx.stroke()
 
-
+@contextmanager
+def transform_drawing_context(ctx, transform):
+    """
+    Temporarily transform the drawing context. Can accept a raw cairo Context, or any of the specialized grid-part
+    contexts.
+    """
+    if not isinstance(ctx, cairo.Context):
+        real_ctx = ctx.ctx
+    else:
+        real_ctx = ctx
+    real_ctx.save()
+    try:
+        real_ctx.transform(transform)
+        yield ctx
+    finally:
+        real_ctx.restore()

@@ -1,7 +1,7 @@
 import cairo
 from z3 import *
 
-from display import BaseDisplay
+from display import BaseDisplay, rotation_matrix_for_vector
 from invalidobj import Invalid
 
 class Cell(object):
@@ -267,12 +267,12 @@ class RectDisplay(BaseDisplay):
     def _setup_cell(self, cell):
         matrix = cairo.Matrix()
         matrix.translate(cell.x + 0.5, cell.y + 0.5)
-        matrix.scale(1/2, 1/2)
         return self.get_cell_fn(), matrix
 
     def _setup_edge(self, edge):
-        d_x, d_y = edge.vector
-        matrix = cairo.Matrix(d_x, d_y, -d_y, d_x, edge.x, edge.y)
+        matrix = cairo.Matrix()
+        matrix.translate(edge.x, edge.y)
+        matrix = rotation_matrix_for_vector(*edge.vector) * matrix
         return self.get_edge_fn(edge.vector), matrix
 
     def _setup_point(self, point):
@@ -281,14 +281,15 @@ class RectDisplay(BaseDisplay):
         return self.get_point_fn(), matrix
 
     CELL_CORNERS = [
-        (-1, -1),
-        (1, -1),
-        (1, 1),
-        (-1, 1),
+        (-0.5, -0.5),
+        (0.5, -0.5),
+        (0.5, 0.5),
+        (-0.5, 0.5),
     ]
-    def _cell_corners(self):
+    def cell_corners(self):
         return RectDisplay.CELL_CORNERS
 
+    CELL_RADIUS = 0.5
 
 
 # g = EdgedGrid(10, 10)

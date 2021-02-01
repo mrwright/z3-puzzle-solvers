@@ -1,7 +1,7 @@
 from z3 import *
 import cairo
 
-from display import BaseDisplay
+from display import BaseDisplay, rotation_matrix_for_vector
 from invalidobj import Invalid
 
 # This module represents a hex grid that has rows of hexes. If your puzzle has columns of hexes, turn it sideways.
@@ -552,7 +552,9 @@ class HexDisplay(BaseDisplay):
         # matrix = cairo.Matrix()
         # matrix.translate(*HexDisplay.transform_coords(edge.coords))
         d_x, d_y = _transform_coords(edge.vector)
-        matrix = cairo.Matrix(d_x, d_y, -d_y, d_x, *_transform_coords(edge.coords))
+        matrix = cairo.Matrix()
+        matrix.translate(*_transform_coords(edge.coords))
+        matrix = rotation_matrix_for_vector(*_transform_coords(edge.vector)) * matrix
         fn = self.get_edge_fn(edge.vector)
         return fn, matrix
 
@@ -572,10 +574,10 @@ class HexDisplay(BaseDisplay):
         _transform_coords((0,0,1)),
         _transform_coords((0,-1,0)),
     ]
-    def _cell_corners(self):
+    def cell_corners(self):
         return HexDisplay.CELL_CORNERS
 
-
+    CELL_RADIUS = HALF_SQRT3
 
 
 
