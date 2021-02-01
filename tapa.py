@@ -1,7 +1,6 @@
 from z3 import *
 
-from display import draw_grid
-from grid import Grid
+from grid import Grid, RectDisplay
 from invalidobj import Invalid
 
 
@@ -140,12 +139,13 @@ def solve_tapa(puzzle):
         if int(ctx.val) >= 0:
             ctx.fill(0.3, 0.5, 0.7, 1)
         else:
-            ctx.text(' '.join(lines[ctx.cell.y][ctx.cell.x]))
+            ctx.draw_text(' '.join(lines[ctx.cell.y][ctx.cell.x]))
 
     def edge_draw(ctx):
         ctx.draw(1)
 
-    draw_grid(g, m, 48, cell_draw, edge_draw, edge_draw)
+    grid_display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw)
+    grid_display.display_grid(g, m, 48)
 
 
 if __name__ == '__main__':
