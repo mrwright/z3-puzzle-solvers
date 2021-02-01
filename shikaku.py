@@ -91,22 +91,9 @@ def cell_draw(ctx):
     if given != ' ':
         ctx.draw_text(str(ord(given) - ord('0')), fontsize=24)
 
-def get_model(m, v):
-    if isinstance(v, Invalid):
-        return -1
-    else:
-        return m[v].as_long()
+def edge_draw(ctx):
+    regions = set(ctx.model[cell.var].as_long() for cell in ctx.edge.cells())
+    ctx.draw(width=5 if ctx.edge.is_outside or len(regions) > 1 else 1)
 
-def vert_edge_draw(ctx):
-    left = get_model(ctx.model, ctx.edge.cell_left.var)
-    right = get_model(ctx.model, ctx.edge.cell_right.var)
-    ctx.draw(width=5 if left != right else 1)
-
-def horiz_edge_draw(ctx):
-    top = get_model(ctx.model, ctx.edge.cell_above.var)
-    bottom = get_model(ctx.model, ctx.edge.cell_below.var)
-    ctx.draw(width=5 if top != bottom else 1)
-
-display = RectDisplay(cell_fn=cell_draw, edge_fn=vert_edge_draw)
-display.set_horiz_edge_fn(horiz_edge_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw)
 display.display_grid(g, m, 64)

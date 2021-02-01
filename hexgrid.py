@@ -509,13 +509,6 @@ class HexGrid(object):
             yield [self.cell(n, se+x, sw-x) for x in range(row_width)]
 
 
-HALF_SQRT3 = math.sqrt(3)/2
-def _transform_coords(coords):
-    n, se, sw = coords
-    x = (se - sw) * HALF_SQRT3
-    y = - n + se / 2 + sw / 2
-    return x, y
-
 class HexDisplay(BaseDisplay):
     def set_vert_edge_fn(self, fn):
         self.set_edge_fn(fn, only_for=(1,0,0))
@@ -534,50 +527,59 @@ class HexDisplay(BaseDisplay):
 
     def _get_extents(self, grid):
         # in half-hexes
-        left, _ = _transform_coords((-grid.west_row, 0, grid.west_row+1))
-        _, top = _transform_coords((1, 0, 0))
+        left, _ = self.convert_coords((-grid.west_row, 0, grid.west_row + 1))
+        _, top = self.convert_coords((1, 0, 0))
         width, _, se, sw = calc_bounds(grid.width, grid.west_row, grid.east_row, grid.east_row)
-        right, _ = _transform_coords((0, se+width-1, sw-width))
-        _, bottom = _transform_coords((-grid.height, grid.height-1, 0))
+        right, _ = self.convert_coords((0, se + width - 1, sw - width))
+        _, bottom = self.convert_coords((-grid.height, grid.height - 1, 0))
 
         return left, top, right, bottom
 
     def _setup_cell(self, cell):
         matrix = cairo.Matrix()
-        matrix.translate(*_transform_coords(cell.coords))
+        matrix.translate(*self.convert_coords(cell.coords))
         fn = self.get_cell_fn()
         return fn, matrix
 
     def _setup_edge(self, edge):
         # matrix = cairo.Matrix()
         # matrix.translate(*HexDisplay.transform_coords(edge.coords))
-        d_x, d_y = _transform_coords(edge.vector)
+        d_x, d_y = self.convert_coords(edge.vector)
         matrix = cairo.Matrix()
-        matrix.translate(*_transform_coords(edge.coords))
-        matrix = rotation_matrix_for_vector(*_transform_coords(edge.vector)) * matrix
+        matrix.translate(*self.convert_coords(edge.coords))
+        matrix = rotation_matrix_for_vector(*self.convert_coords(edge.vector)) * matrix
         fn = self.get_edge_fn(edge.vector)
         return fn, matrix
 
     def _setup_point(self, point):
         matrix = cairo.Matrix()
-        matrix.translate(*_transform_coords(point.coords))
+        matrix.translate(*self.convert_coords(point.coords))
         if sum(point.coords) == -1:
             matrix.scale(-1, -1)
         fn = self.get_point_fn(sum(point.coords))
         return fn, matrix
 
     CELL_CORNERS = [
-        _transform_coords((1,0,0)),
-        _transform_coords((0,0,-1)),
-        _transform_coords((0,1,0)),
-        _transform_coords((-1,0,0)),
-        _transform_coords((0,0,1)),
-        _transform_coords((0,-1,0)),
+        (1, 0, 0),
+        (0, 0, -1),
+        (0, 1, 0),
+        (-1, 0, 0),
+        (0, 0, 1),
+        (0, -1, 0),
     ]
     def cell_corners(self):
         return HexDisplay.CELL_CORNERS
 
+    HALF_SQRT3 = math.sqrt(3)/2
+    def convert_coords(self, coords, default=(0,0)):
+        if coords is None: return default
+        n, se, sw = coords
+        x = (se - sw) * HexDisplay.HALF_SQRT3
+        y = - n + se / 2 + sw / 2
+        return x, y
+
     CELL_RADIUS = HALF_SQRT3
+
 
 
 

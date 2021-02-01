@@ -170,6 +170,8 @@ class BaseDisplay:
     # that will fit entirely inside a cell
     CELL_RADIUS = 1
 
+    def convert_coords(self, coords, default):
+        raise NotImplementedError
 
 SQRT2 = math.sqrt(2)
 # users would much rather specify stroke widths and text sizes in device coordinates, instead of user coordinates.
@@ -186,14 +188,16 @@ class PointContext(object):
         self.ctx = ctx
         self.extra = extra
 
-    def draw_square(self, size=(1/3), color=(0, 0, 0, 1)):
+    def draw_square(self, size=(1/3), center=None, color=(0, 0, 0, 1)):
+        x, y = self.display.convert_coords(center)
         self.ctx.set_source_rgba(*color)
-        self.ctx.rectangle(- size/2, - size/2,
+        self.ctx.rectangle(x - size/2, y - size/2,
                            size, size)
         self.ctx.fill()
 
-    def draw_circle(self, radius=(1/3), **kw):
-        draw_circle(self.ctx, 0, 0, radius, **kw)
+    def draw_circle(self, radius=(1/3), coords=None, **kw):
+        center = self.display.convert_coords(coords)
+        draw_circle(self.ctx, center, radius, **kw)
 
 class EdgeContext(object):
     def __init__(self, display, ctx, edge, model, extra):
@@ -217,8 +221,9 @@ class EdgeContext(object):
         self.ctx.line_to(1,0)
         self.ctx.stroke()
 
-    def draw_text(self, text, x=0.5, y=0, **kw):
-        draw_text(self.ctx, text, x, y, **kw)
+    def draw_text(self, text, coords=None, **kw):
+        coords = self.display.convert_coords(coords, default=(0.5, 0))
+        draw_text(self.ctx, text, coords, **kw)
 
 class CellContext(object):
     def __init__(self, display, ctx, cell, model, extra):
@@ -228,38 +233,41 @@ class CellContext(object):
         self.model = model
         self.extra = extra
         self.corners = display.cell_corners()
+        self.display_corners = [display.convert_coords(corner) for corner in self.corners]
 
     @property
     def val(self):
         return str(self.model[self.cell.var])
 
-    def fill(self, r, g, b, a):
-        self.ctx.set_source_rgba(r, g, b, a)
-        self.ctx.move_to(*self.corners[-1])
-        for corner in self.corners:
-            self.ctx.line_to(*corner)
-        # fill it
-        self.ctx.fill()
+    def fill(self, r=0, g=0, b=0, a=1):
+        if isinstance(r, tuple):
+            color = r
+        else:
+            color = (r, g, b, a)
+        draw_polygon(self.ctx, self.display_corners, color, fill=True)
 
-    def draw_text(self, text, x=0, y=0, **kw):
-        draw_text(self.ctx, text, x, y, **kw)
+    def draw_text(self, text, coords=None, **kw):
+        center = self.display.convert_coords(coords)
+        draw_text(self.ctx, text, center, **kw)
 
-    def draw_circle(self, radius=None, **kw):
+    def draw_circle(self, radius=None, coords=None, **kw):
         if radius is None:
             radius = self.display.CELL_RADIUS * 2/3
-        draw_circle(self.ctx, 0, 0, radius, **kw)
+        center = self.display.convert_coords(coords)
+        draw_circle(self.ctx, center, radius, **kw)
 
-    def draw_line(self, x0, y0, x1, y1, stroke_width=2, color=(0, 0, 0, 1)):
+    def draw_line(self, coords0, coords1, stroke_width=2, color=(0, 0, 0, 1)):
         self.ctx.set_source_rgba(*color)
         self.ctx.set_line_width(convert_stroke_width(self.ctx, stroke_width))
-        self.ctx.move_to(x0, y0)
-        self.ctx.line_to(x1, y1)
+        self.ctx.move_to(*self.display.convert_coords(coords0))
+        self.ctx.line_to(*self.display.convert_coords(coords1))
         self.ctx.stroke()
 
     def draw_line_corners(self, c0, c1, *a, **kw):
-        self.draw_line(*self.corners[c0], *self.corners[c1], *a, **kw)
+        self.draw_line(self.corners[c0], self.corners[c1], *a, **kw)
 
-def draw_text(ctx, text, x, y, fontsize=12, family='', bold=False, italic=False, color=(0, 0, 0, 1)):
+def draw_text(ctx, text, coords, fontsize=12, family='', bold=False, italic=False, color=(0, 0, 0, 1)):
+    x, y = coords
     ctx.set_font_size(convert_stroke_width(ctx, fontsize))
     ctx.set_font_face(font(family, bold, italic))
     ctx.set_source_rgba(*color)
@@ -268,7 +276,8 @@ def draw_text(ctx, text, x, y, fontsize=12, family='', bold=False, italic=False,
     ctx.show_text(str(text))
     ctx.stroke()
 
-def draw_circle(ctx, x, y, radius, color=(0, 0, 0, 1), fill=False, stroke_width=2):
+def draw_circle(ctx, center, radius, color=(0, 0, 0, 1), fill=False, stroke_width=2):
+    x, y = center
     ctx.set_source_rgba(*color)
     ctx.arc(x, y, radius, 0, 6.3)
     _fill_or_stroke(ctx, fill, stroke_width)

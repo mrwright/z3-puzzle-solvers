@@ -155,7 +155,7 @@ print(s.check())
 def draw_edge(ctx, is_given):
     ctx.draw(width=5 if ctx.val == "True" else 1)
     if is_given:
-        display.draw_circle(ctx.ctx, 0.5, 0, radius=0.15, fill=True, color=(0,1,0,1))
+        display.draw_circle(ctx.ctx, radius=0.15, center=(0.5, 0), fill=True, color=(0,1,0,1))
 
 def draw_vert(ctx):
     draw_edge(ctx, vert_given(ctx.edge))
@@ -169,7 +169,7 @@ def draw_point(ctx):
 
 def draw_cell(ctx):
     if cell_given(ctx.cell):
-        ctx.draw_circle(radius=0.3, fill=True, color=(0, 1, 0, 1))
+        ctx.draw_circle(radius=0.15, fill=True, color=(0, 1, 0, 1))
     # galaxy = ctx.model.eval(cell_galaxy(ctx.cell))
     # dx = ctx.model.eval(DX(ctx.cell.var))
     # dy = ctx.model.eval(DY(ctx.cell.var))

@@ -199,9 +199,9 @@ def solve_board(board, display=False):
                 if ctx.model.eval(ctx.cell.var.has_mirror):
                     color = (0, 0, 1, 1)
                     if ctx.model.eval(ctx.cell.var.mirror_state(t_start)):
-                        ctx.draw_line(-0.3, 0.3, 0.3, -0.3, color=color)
+                        ctx.draw_line((-0.3, 0.3), (0.3, -0.3), color=color)
                     else:
-                        ctx.draw_line(-0.3, -0.3, 0.3, 0.3, color=color)
+                        ctx.draw_line((-0.3, -0.3), (0.3, 0.3), color=color)
 
                 if ctx.cell.coords == human.coords:
                     # orient the human correctly
@@ -210,14 +210,14 @@ def solve_board(board, display=False):
 
                 if ctx.model.eval(laser.in_cell(ctx.cell, t_end - 1)):
                     # draw the number outside
-                    ctx.draw_text(t_end - t_start - 1, *dir_to_vector[ctx.model.eval(laser.dir(t_end-1))], fontsize=24)
+                    ctx.draw_text(t_end - t_start - 1, dir_to_vector[ctx.model.eval(laser.dir(t_end-1))], fontsize=24)
 
             def edge_draw(ctx):
                 ctx.draw(width=3)
 
             def laser_draw(ctx, t):
                 color = (1, 0, 0, 1)
-                ctx.draw_line(0, 0, 1, 0, color=color)
+                ctx.draw_line((0, 0), (1, 0), color=color)
 
             rect_display = RectDisplay(edge_fn=edge_draw, cell_fn=cell_draw, padding=1.5)
             grids = make_frames(grid, firing_ticks, 4)

@@ -291,6 +291,10 @@ class RectDisplay(BaseDisplay):
 
     CELL_RADIUS = 0.5
 
+    def convert_coords(self, coords, default=(0,0)):
+        # rect grids don't need coordinate conversion
+        return coords or default
+
 
 # g = EdgedGrid(10, 10)
 

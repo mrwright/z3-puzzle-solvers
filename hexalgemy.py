@@ -1,11 +1,10 @@
-import cairo
+from functools import reduce
+
 from z3 import *
 
 from display import transform_drawing_context
-from hexgrid import HexGrid, HexDisplay, coord_add
-from invalidobj import Invalid, IAnd, IOr
-from functools import reduce
-
+from hexgrid import HexDisplay, HexGrid, coord_add
+from invalidobj import IAnd, IOr, Invalid
 from z3utils import as_tuple
 
 givens = [
