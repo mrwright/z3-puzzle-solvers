@@ -1,12 +1,11 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
+from grid import Grid, RectDisplay
 from adjacency_manager import solve
 from invalidobj import IAnd, IOr
 
 s = Solver()
-g = Grid(9, 9)
+g = Grid(8, 8)
 
 for e in g.edges:
     s.add(e.var >= 0)
@@ -17,16 +16,15 @@ for p in g.points:
     s.add(Or([count == 0, count == 2]))
 
 givens = [
-    "  o o     ",
-    "    o   . ",
-    "  . . o   ",
-    "   o  o   ",
-    ".    o   o",
-    "  o    o  ",
-    "  .   o   ",
-    "o   .    o",
-    "      oo  ",
-    "  .      .",
+    "commodore",
+    "objection",
+    "conscious",
+    "schoolboy",
+    "offseason",
+    "afortiori",
+    "bloodwort",
+    "openhouse",
+    "shoehorns",
 ]
 
 for x in range(g.width+1):
@@ -74,9 +72,11 @@ def edge_draw(ctx):
 
 def point_draw(ctx):
     #ctx.draw_square(size=7)
-    if givens[ctx.gy][ctx.gx] == 'o':
+    if givens[ctx.point.y][ctx.point.x] == 'o':
         ctx.draw_circle(fill=False)
-    elif givens[ctx.gy][ctx.gx] == '.':
+    elif givens[ctx.point.y][ctx.point.x] == '.':
         ctx.draw_circle(fill=True)
 
-draw_grid(g, m, 64, cell_draw, edge_draw, edge_draw, point_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw, point_fn=point_draw)
+display.display_grid(g, m, 64)
+

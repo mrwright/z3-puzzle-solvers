@@ -1,11 +1,9 @@
 from z3 import *
 
-# Note: doesn't yet work. We need something to find and ban "islands".
-
-from grid import Grid
-from display import draw_grid
 from adjacency_manager import solve_grid
-from invalidobj import EAnd, IOr, Invalid
+from grid import Grid, RectDisplay
+
+# Note: doesn't yet work. We need something to find and ban "islands".
 
 s = Solver()
 
@@ -94,9 +92,10 @@ def cell_draw(ctx):
         ctx.fill(0.5, 0.5, 0.5, 1)
     else:
         ctx.fill(1, 1, 1, 1)
-    ctx.text(givens[ctx.gy][ctx.gx], fontsize=24)
+    ctx.draw_text(givens[ctx.cell.y][ctx.cell.x], fontsize=24)
 
 def edge_draw(ctx):
     ctx.draw(width=1)
 
-draw_grid(g, m, 64, cell_draw, edge_draw, edge_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=edge_draw)
+display.display_grid(g, m, 64)

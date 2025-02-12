@@ -1,7 +1,6 @@
 from z3 import *
 
-from grid import Grid
-from display import draw_grid
+from grid import Grid, RectDisplay
 
 g = Grid(9, 9)
 
@@ -43,13 +42,15 @@ m = s.model()
 
 def cell_draw(ctx):
     ctx.fill(0.9, 0.9, 1, 1)
-    bold = l[ctx.gy][ctx.gx] != 0
-    ctx.text(ctx.val, fontsize=24, bold=bold)
+    bold = l[ctx.cell.y][ctx.cell.x] != 0
+    ctx.draw_text(ctx.val, fontsize=24, bold=bold)
 
 def horiz_edge_draw(ctx):
-    ctx.draw(width=5 if (ctx.gy % 3 == 0) else 1)
+    ctx.draw(width=5 if (ctx.edge.y % 3 == 0) else 1)
 
 def vert_edge_draw(ctx):
-    ctx.draw(width=5 if (ctx.gx % 3 == 0) else 1)
+    ctx.draw(width=5 if (ctx.edge.x % 3 == 0) else 1)
 
-draw_grid(g, m, 64, cell_draw, horiz_edge_draw, vert_edge_draw)
+display = RectDisplay(cell_fn=cell_draw, edge_fn=vert_edge_draw)
+display.set_horiz_edge_fn(horiz_edge_draw)
+display.display_grid(g, m, 64)

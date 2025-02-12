@@ -1,4 +1,7 @@
 from z3 import *
+import cairo
+
+from display import BaseDisplay, rotation_matrix_for_vector
 from invalidobj import Invalid
 
 # This module represents a hex grid that has rows of hexes. If your puzzle has columns of hexes, turn it sideways.
@@ -89,6 +92,10 @@ class VertEdge(object):
     def coords(self):
         return self.n, self.se, self.sw
 
+    @property
+    def vector(self):
+        return 1, 0, 0
+
 class NW_SE_Edge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -114,6 +121,10 @@ class NW_SE_Edge(object):
     def coords(self):
         return self.n, self.se, self.sw
 
+    @property
+    def vector(self):
+        return 0, 1, 0
+
 class NE_SW_Edge(object):
     def __init__(self, var, n, se, sw):
         self.var = var
@@ -138,6 +149,10 @@ class NE_SW_Edge(object):
     @property
     def coords(self):
         return self.n, self.se, self.sw
+
+    @property
+    def vector(self):
+        return 0, 0, 1
 
 class NorthwardPoint(object):
     def __init__(self, var, n, se, sw):
@@ -492,6 +507,80 @@ class HexGrid(object):
         for y in range(self.height):
             row_width, n, se, sw = calc_bounds(self.width, self.west_row, self.east_row, y)
             yield [self.cell(n, se+x, sw-x) for x in range(row_width)]
+
+
+class HexDisplay(BaseDisplay):
+    def set_vert_edge_fn(self, fn):
+        self.set_edge_fn(fn, only_for=(1,0,0))
+
+    def set_nw_se_edge_fn(self, fn):
+        self.set_edge_fn(fn, only_for=(0,1,0))
+
+    def set_ne_sw_edge_fn(self, fn):
+        self.set_edge_fn(fn, only_for=(0,0,1))
+
+    def set_northward_point_fn(self, fn):
+        self.set_point_fn(fn, only_for=1)
+
+    def set_southward_point_fn(self, fn):
+        self.set_point_fn(fn, only_for=-1)
+
+    def _get_extents(self, grid):
+        # in half-hexes
+        left, _ = self.convert_coords((-grid.west_row, 0, grid.west_row + 1))
+        _, top = self.convert_coords((1, 0, 0))
+        width, _, se, sw = calc_bounds(grid.width, grid.west_row, grid.east_row, grid.east_row)
+        right, _ = self.convert_coords((0, se + width - 1, sw - width))
+        _, bottom = self.convert_coords((-grid.height, grid.height - 1, 0))
+
+        return left, top, right, bottom
+
+    def _setup_cell(self, cell):
+        matrix = cairo.Matrix()
+        matrix.translate(*self.convert_coords(cell.coords))
+        fn = self.get_cell_fn()
+        return fn, matrix
+
+    def _setup_edge(self, edge):
+        # matrix = cairo.Matrix()
+        # matrix.translate(*HexDisplay.transform_coords(edge.coords))
+        d_x, d_y = self.convert_coords(edge.vector)
+        matrix = cairo.Matrix()
+        matrix.translate(*self.convert_coords(edge.coords))
+        matrix = rotation_matrix_for_vector(*self.convert_coords(edge.vector)) * matrix
+        fn = self.get_edge_fn(edge.vector)
+        return fn, matrix
+
+    def _setup_point(self, point):
+        matrix = cairo.Matrix()
+        matrix.translate(*self.convert_coords(point.coords))
+        if sum(point.coords) == -1:
+            matrix.scale(-1, -1)
+        fn = self.get_point_fn(sum(point.coords))
+        return fn, matrix
+
+    CELL_CORNERS = [
+        (1, 0, 0),
+        (0, 0, -1),
+        (0, 1, 0),
+        (-1, 0, 0),
+        (0, 0, 1),
+        (0, -1, 0),
+    ]
+    def cell_corners(self):
+        return HexDisplay.CELL_CORNERS
+
+    HALF_SQRT3 = math.sqrt(3)/2
+    def convert_coords(self, coords, default=(0,0)):
+        if coords is None: return default
+        n, se, sw = coords
+        x = (se - sw) * HexDisplay.HALF_SQRT3
+        y = - n + se / 2 + sw / 2
+        return x, y
+
+    CELL_RADIUS = HALF_SQRT3
+
+
 
 
 # g = HexGrid(1, 1, 0, 0)

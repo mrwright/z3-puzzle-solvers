@@ -1,4 +1,7 @@
+import cairo
 from z3 import *
+
+from display import BaseDisplay, rotation_matrix_for_vector
 from invalidobj import Invalid
 
 class Cell(object):
@@ -52,6 +55,10 @@ class HorizEdge(object):
     def is_outside(self):
         return len(self.cells()) < 2
 
+    @property
+    def vector(self):
+        return 1, 0
+
     def __str__(self):
         return "Horiz({})".format(self.var)
 
@@ -74,6 +81,10 @@ class VertEdge(object):
     @property
     def is_outside(self):
         return len(self.cells()) < 2
+
+    @property
+    def vector(self):
+        return 0, 1
 
     def __str__(self):
         return "Vert({})".format(self.var)
@@ -240,6 +251,50 @@ class Grid(object):
     @property
     def edges(self):
         return self.horizs + self.verts
+
+
+class RectDisplay(BaseDisplay):
+
+    def set_horiz_edge_fn(self, fn):
+        self.set_edge_fn(fn, only_for=(1, 0))
+
+    def set_vert_edge_fn(self, fn):
+        self.set_edge_fn(fn, only_for=(0, 1))
+
+    def _get_extents(self, grid):
+        return 0, 0, grid.width, grid.height
+
+    def _setup_cell(self, cell):
+        matrix = cairo.Matrix()
+        matrix.translate(cell.x + 0.5, cell.y + 0.5)
+        return self.get_cell_fn(), matrix
+
+    def _setup_edge(self, edge):
+        matrix = cairo.Matrix()
+        matrix.translate(edge.x, edge.y)
+        matrix = rotation_matrix_for_vector(*edge.vector) * matrix
+        return self.get_edge_fn(edge.vector), matrix
+
+    def _setup_point(self, point):
+        matrix = cairo.Matrix()
+        matrix.translate(point.x, point.y)
+        return self.get_point_fn(), matrix
+
+    CELL_CORNERS = [
+        (-0.5, -0.5),
+        (0.5, -0.5),
+        (0.5, 0.5),
+        (-0.5, 0.5),
+    ]
+    def cell_corners(self):
+        return RectDisplay.CELL_CORNERS
+
+    CELL_RADIUS = 0.5
+
+    def convert_coords(self, coords, default=(0,0)):
+        # rect grids don't need coordinate conversion
+        return coords or default
+
 
 # g = EdgedGrid(10, 10)
 

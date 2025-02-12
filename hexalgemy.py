@@ -1,8 +1,11 @@
-from z3 import *
-from hexgrid import HexGrid, coord_add
-from hex_display import draw_grid
-from invalidobj import Invalid, IAnd, IOr
 from functools import reduce
+
+from z3 import *
+
+from display import transform_drawing_context
+from hexgrid import HexDisplay, HexGrid, coord_add
+from invalidobj import IAnd, IOr, Invalid
+from z3utils import as_tuple
 
 givens = [
     '    ',
@@ -110,10 +113,31 @@ colors = {
 def draw_cell(ctx):
     if ctx.cell.given != ' ':
         color = colors[given_values[ctx.cell.given]]
-        ctx.fill(*color)
+        with transform_drawing_context(ctx):
+            # this is just a trick to use fill() to make a smaller hexagon
+            ctx.ctx.scale(0.8, 0.8)
+            ctx.fill(*color)
     else:
-        color = ctx.model[ctx.cell.var]
-        realcolor = colors[(bool(ctx.model.eval(R(color))), bool(ctx.model.eval(Y(color))), bool(ctx.model.eval(B(color))))]
-        ctx.circle(color=realcolor, fill=True)
+        interp_color = as_tuple(ctx.model, ctx.cell.var)
+        if any(interp_color):
+            ctx.draw_circle(color=colors[interp_color], fill=True)
 
-draw_grid(g, s.model(), 30, cell_fn=draw_cell, edge_fn=draw_edge)
+def draw_point(ctx):
+    # ctx.draw_square(color=(1,0,0,1))
+    # ctx.draw_circle(color=(0,1,0,1))
+    # ctx.ctx.set_line_width(1/10)
+    # ctx.ctx.set_source_rgba(0,0,1,1)
+    # ctx.ctx.move_to(0,0)
+    # ctx.ctx.line_to(0, -0.2)
+    # ctx.ctx.stroke()
+    pass
+
+def draw_south_point(ctx):
+    # ctx.draw_circle(color=(0,1,0,1))
+    pass
+
+display = HexDisplay(cell_fn=draw_cell, edge_fn=draw_edge, point_fn=draw_point)
+display.set_southward_point_fn(draw_south_point)
+
+display.display_grid(g, s.model(), 40)
+
