@@ -5,7 +5,7 @@ from adjacency_manager import solve
 from invalidobj import IAnd, IOr
 
 s = Solver()
-g = Grid(9, 9)
+g = Grid(8, 8)
 
 for e in g.edges:
     s.add(e.var >= 0)
@@ -16,16 +16,15 @@ for p in g.points:
     s.add(Or([count == 0, count == 2]))
 
 givens = [
-    "  o o     ",
-    "    o   . ",
-    "  . . o   ",
-    "   o  o   ",
-    ".    o   o",
-    "  o    o  ",
-    "  .   o   ",
-    "o   .    o",
-    "      oo  ",
-    "  .      .",
+    "commodore",
+    "objection",
+    "conscious",
+    "schoolboy",
+    "offseason",
+    "afortiori",
+    "bloodwort",
+    "openhouse",
+    "shoehorns",
 ]
 
 for x in range(g.width+1):
